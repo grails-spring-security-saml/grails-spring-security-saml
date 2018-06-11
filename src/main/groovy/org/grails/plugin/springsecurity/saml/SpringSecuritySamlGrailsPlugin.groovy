@@ -66,7 +66,10 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             'test/**',
             "grails-app/views/error.gsp",
             'docs/**',
-            'scripts/PublishGithub.groovy'
+            'scripts/PublishGithub.groovy',
+            'security/idp-local.xml',
+            'security/keystore.jks',
+            'security/sp.xml'
     ]
 
     // Any additional developers beyond the author specified above.
@@ -133,7 +136,6 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
 
             metadataGenerator(MetadataGenerator)
 
-            // TODO: Update to handle any type of meta data providers for default to file based instead http provider.
             log.debug "Dynamically defining bean metadata providers... "
             def providerBeanName = "extendedMetadataDelegate"
             conf.saml.metadata.providers.each {k,v ->
@@ -265,10 +267,8 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                         hostedSPName = defaultSpConfig?."alias"
                     }
                 }
-
                 defaultIDP = conf.saml.metadata?.defaultIdp
             }
-
 
 
             userDetailsService(SpringSamlUserDetailsService) {
@@ -425,6 +425,11 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             println "saml.active is not true, $PLUGIN_NOT_AVAILABLE."
 
             return false
+        }
+
+        if(conf.saml.metadata.providers.size() == 0) {
+            println "Please define at least one IDP via the grails.plugin.springsecurity.saml.metadata.providers property. $PLUGIN_NOT_AVAILABLE."
+            return
         }
 
         true
