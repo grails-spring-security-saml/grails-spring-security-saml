@@ -44,6 +44,46 @@ import org.opensaml.saml2.metadata.provider.HTTPMetadataProvider
 import org.opensaml.xml.parse.BasicParserPool
 import org.apache.commons.httpclient.HttpClient
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+import javax.servlet.Filter;
+import org.opensaml.core.Version;
+import org.springframework.beans.factory.NoSuchBeanDefinitionException;
+import org.springframework.context.ApplicationContext;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.config.annotation.web.HttpSecurityBuilder;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractAuthenticationFilterConfigurer;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.saml2.provider.service.authentication.AbstractSaml2AuthenticationRequest;
+import org.springframework.security.saml2.provider.service.authentication.OpenSaml4AuthenticationProvider;
+import org.springframework.security.saml2.provider.service.authentication.OpenSaml4AuthenticationRequestFactory;
+import org.springframework.security.saml2.provider.service.authentication.OpenSamlAuthenticationProvider;
+import org.springframework.security.saml2.provider.service.authentication.OpenSamlAuthenticationRequestFactory;
+import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticationRequestFactory;
+import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration;
+import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistrationRepository;
+import org.springframework.security.saml2.provider.service.servlet.filter.Saml2WebSsoAuthenticationFilter;
+import org.springframework.security.saml2.provider.service.servlet.filter.Saml2WebSsoAuthenticationRequestFilter;
+import org.springframework.security.saml2.provider.service.web.DefaultRelyingPartyRegistrationResolver;
+import org.springframework.security.saml2.provider.service.web.DefaultSaml2AuthenticationRequestContextResolver;
+import org.springframework.security.saml2.provider.service.web.HttpSessionSaml2AuthenticationRequestRepository;
+import org.springframework.security.saml2.provider.service.web.RelyingPartyRegistrationResolver;
+import org.springframework.security.saml2.provider.service.web.Saml2AuthenticationRequestContextResolver;
+import org.springframework.security.saml2.provider.service.web.Saml2AuthenticationRequestRepository;
+import org.springframework.security.saml2.provider.service.web.Saml2AuthenticationTokenConverter;
+import org.springframework.security.web.authentication.AuthenticationConverter;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.authentication.ui.DefaultLoginPageGeneratingFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
+import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
+
+
 class SpringSecuritySamlGrailsPlugin extends Plugin {
 
     // the version or versions of Grails the plugin is designed for
@@ -402,10 +442,46 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             springSecurityFilterChain(String, "")
             securityFilterChainRegistration(String, "")
 
-            println '...finished configuring Spring Security SAML'
-        }
 
-    }
+            String loginProcessingUrl = "/login/saml2/sso/{registrationId}";
+
+            //user provided?
+            relyingPartyRegistrationRepository(InMemoryRelyingPartyRegistrationRepository)
+
+            relyingPartyRegistrationRepositoryResolver(DefaultRelyingPartyRegistrationResolver, ref('relyingPartyRegistrationRepository'))
+
+            //user provided?
+            authenticationConverter(Saml2AuthenticationTokenConverter, ref('relyingPartyRegistrationRepositoryResolver'))
+
+            authenticationRequestRepository(HttpSessionSaml2AuthenticationRequestRepository)
+
+            authenticationRequestResolver(OpenSaml4AuthenticationRequestFactory)
+
+            relyingPartyRegistrationResolver(DefaultRelyingPartyRegistrationResolver, ref('relyingPartyRegistrationRepository'))
+
+            contextResolver(DefaultSaml2AuthenticationRequestContextResolver, ref('relyingPartyRegistrationResolver'))
+
+            saml2WebSsoAuthenticationFilter(Saml2WebSsoAuthenticationFilter, ref('authenticationConverter'), loginProcessingUrl) {
+                authenticationRequestRepository = ref('authenticationRequestRepository')
+            }
+
+            saml2AuthenticationRequestFilter(Saml2WebSsoAuthenticationRequestFilter, ref('authenticationRequestResolver')) {
+                authenticationRequestRepository = ref('authenticationRequestRepository')
+            }
+
+            println '...finished configuring Spring Security SAML'
+            /*String filterProcessingUrl = "/saml2/authenticate/{registrationId}";
+            @Override
+            public void configure(B http) throws Exception {
+                http.addFilter(this.authenticationRequestEndpoint.build(http));
+                super.configure(http);
+            }*/
+
+            // user defined?
+            //authenticationManager()
+
+            //authenticationProvider(OpenSaml4AuthenticationProvider);
+        }
 
     void doWithDynamicMethods() {
         // TODO Implement registering dynamic methods to classes (optional)
@@ -430,7 +506,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
         // TODO Implement code that is executed when the application shuts down (optional)
     }
 
-    private static boolean isActive( def conf ) {
+    private static boolean isActive(conf) {
         final PLUGIN_NOT_AVAILABLE = 'SAML plugin will not be available'
         if( !conf ) {
             // This is unlikely to ever occur due to default configs included in plugins,
