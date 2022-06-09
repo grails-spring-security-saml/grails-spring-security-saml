@@ -19,8 +19,8 @@ import groovy.util.logging.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.saml.SAMLAuthenticationProvider;
-import org.springframework.security.saml.SAMLCredential;
+//import org.springframework.security.saml.SAMLAuthenticationProvider;
+//import org.springframework.security.saml.SAMLCredential;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -35,7 +35,7 @@ import java.util.logging.Logger;
  * @author feroz.panwaskar
  */
 
-public class GrailsSAMLAuthenticationProvider extends SAMLAuthenticationProvider {
+public class GrailsSAMLAuthenticationProvider /*extends SAMLAuthenticationProvider*/ {
     public GrailsSAMLAuthenticationProvider() {
         super();
     }
@@ -47,6 +47,7 @@ public class GrailsSAMLAuthenticationProvider extends SAMLAuthenticationProvider
      * @param userDetail loaded user details, can be null
      * @return principal to store inside Authentication object
      */
+     /*
     @Override
     protected Object getPrincipal(SAMLCredential credential, Object userDetail) {
         //logger.info("JEFFWILS - getPrincipal " + userDetail.toString());
@@ -79,4 +80,5 @@ public class GrailsSAMLAuthenticationProvider extends SAMLAuthenticationProvider
             return Collections.emptyList();
         }
     }
+    */
 }

@@ -87,8 +87,37 @@ dependencies {
     //testCompileOnly "org.grails:grails-plugin-testing"
     testCompileOnly "org.grails:grails-web-testing-support"
     testCompileOnly "org.mockito:mockito-core"
+    testRuntimeOnly 'com.h2database:h2'
+    testRuntimeOnly 'com.zaxxer:HikariCP:2.7.4'
 
     developmentOnly("org.springframework.boot:spring-boot-devtools")
+
+    implementation 'javax.servlet:javax.servlet-api:3.1.0'
+
+    implementation "org.grails:grails-console"
+
+    implementation 'org.grails.plugins:spring-security-core:5.0.0-RC1'
+
+    implementation("commons-httpclient:commons-httpclient:3.1") {
+        exclude module: ['commons-codec', 'commons-logging', 'junit']
+    }
+
+    implementation("org.apache.velocity:velocity:1.7") {
+        exclude module: ['ant', 'commons-collections', 'commons-lang', 'commons-logging', 'hsqldb', 'jdom', 'junit', 'log4j', 'logkit', 'oro', 'servlet-api', 'werken-xpath']
+    }
+
+    implementation "joda-time:joda-time:2.9.7"
+
+    implementation "org.bouncycastle:bcprov-jdk15on:1.53"
+
+    implementation "org.apache.santuario:xmlsec:2.0.8"
+
+    implementation("org.owasp.esapi:esapi:2.0.1") {
+        exclude module: [ 'antisamy', 'bsh-core', 'commons-beanutils-core', 'commons-collections', 'commons-configuration', 'commons-fileupload', 'commons-io', 'jsp-api', 'junit', 'log4j', 'servlet-api', 'xom']
+    }
+    implementation 'org.springframework.security.extensions:spring-security-saml2-core:1.0.9.RELEASE'
+
+    implementation "org.jdom:jdom-legacy:1.1.3"
 }
 
 bootRun {

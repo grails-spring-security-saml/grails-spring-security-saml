@@ -15,13 +15,13 @@ public final class CustomSAMLBootstrap extends SAMLBootstrap {
     @Override
     public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
 
-        def conf = SpringSecurityUtils.securityConfig
+        /*def conf = SpringSecurityUtils.securityConfig
         super.postProcessBeanFactory(beanFactory);
         def sigAlgorithmConfig = (conf.saml.signatureAlgorithm) ? SignatureConstants.MORE_ALGO_NS + conf.saml.signatureAlgorithm : SignatureConstants.ALGO_ID_SIGNATURE_RSA_SHA1
         def digestAlgorithmConfig = (conf.saml.digestAlgorithm) ? XMLConstants.XMLENC_NS  + conf.saml.digestAlgorithm : SignatureConstants.ALGO_ID_DIGEST_SHA1
         BasicSecurityConfiguration config = (BasicSecurityConfiguration) Configuration.getGlobalSecurityConfiguration();
         config.registerSignatureAlgorithmURI("RSA", sigAlgorithmConfig);
-        config.setSignatureReferenceDigestMethod(digestAlgorithmConfig);
+        config.setSignatureReferenceDigestMethod(digestAlgorithmConfig);*/
 
     }
 

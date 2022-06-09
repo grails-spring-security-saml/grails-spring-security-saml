@@ -52,11 +52,6 @@ import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.config.annotation.web.HttpSecurityBuilder;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractAuthenticationFilterConfigurer;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.saml2.provider.service.authentication.AbstractSaml2AuthenticationRequest;
 import org.springframework.security.saml2.provider.service.authentication.OpenSaml4AuthenticationProvider;
@@ -82,7 +77,11 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
-
+import org.springframework.security.saml2.provider.service.registration.InMemoryRelyingPartyRegistrationRepository
+import org.springframework.security.saml2.core.Saml2X509Credential
+import java.security.KeyStore
+import java.security.KeyStore.PrivateKeyEntry
+import java.security.KeyStore.PasswordProtection
 
 class SpringSecuritySamlGrailsPlugin extends Plugin {
 
@@ -124,6 +123,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
 
             println 'Configuring Spring Security SAML ...'
 
+            /*
             //Due to Spring DSL limitations, need to import these beans as XML definitions
             def beansFile = "classpath:security/springSecuritySamlBeans.xml"
             println "Importing beans from ${beansFile}..."
@@ -412,7 +412,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
 
             paosBinding(HTTPPAOS11Binding, ref('parserPool'))
 
-            bootStrap(CustomSAMLBootstrap)
+            //bootStrap(CustomSAMLBootstrap)
 
             velocityEngine(VelocityFactory) { bean ->
                 bean.factoryMethod = "getEngine"
@@ -440,22 +440,59 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             //remove beans from SecurityFilterAutoConfiguration.java
             //by overriding them with an empty string
             springSecurityFilterChain(String, "")
-            securityFilterChainRegistration(String, "")
+            securityFilterChainRegistration(String, "")*/
+            String registrationId = "simplesamlphp";
+            String baseUrl = "https://tuorga-qa.rz.tu-bs.de:443"
+
+            String loginProcessingUrl = "/login/saml2/sso/${registrationId}"
 
 
-            String loginProcessingUrl = "/login/saml2/sso/{registrationId}"
+            //service provider
+            String relyingPartyEntityId = "${baseUrl}/saml2/service-provider-metadata/${registrationId}";
+            String assertionConsumerServiceLocation = "${baseUrl}/login/saml2/sso/${registrationId}";
+
+            def storePass = conf.saml.keyManager.storePass.toCharArray()
+            String signingKey = conf.saml.metadata.sp.defaults.signingKey
+            String verificationKey = conf.saml.metadata.sp.defaults.verificationKey ?: signingKey
+
+            KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+            getResource(conf.saml.keyManager.storeFile).URL.withInputStream { is ->
+                keystore.load(is, storePass)
+            }
+
+            def signingEntry = (PrivateKeyEntry)keystore.getEntry(signingKey, new PasswordProtection(storePass))
+
+            Saml2X509Credential relyingPartySigningCredential = new Saml2X509Credential(signingEntry.privateKey,
+                signingEntry.certificate, Saml2X509Credential.Saml2X509CredentialType.SIGNING)
+
+            //identity provider
+            String assertingPartyEntityId = 'https://tuorga-qa.rz.tu-bs.de';
+            String singleSignOnServiceLocation = "https://sso.tu-bs.de/simplesaml/saml2/idp/SSOService.php";
+
+            def verificationEntry = (PrivateKeyEntry)keystore.getEntry(verificationKey, new PasswordProtection(storePass))
+            Saml2X509Credential assertingPartyVerificationCredential = new Saml2X509Credential(verificationEntry.privateKey,
+                verificationEntry.certificate, Saml2X509Credential.Saml2X509CredentialType.SIGNING)
+
+            RelyingPartyRegistration registration = RelyingPartyRegistration.withRegistrationId(registrationId)
+                .entityId(relyingPartyEntityId)
+                .assertionConsumerServiceLocation(assertingConsumerServiceLocation)
+                .signingX509Credentials((c) -> c.add(relyingPartySigningCredential))
+                .assertingPartyDetails((details) -> details
+                        .entityId(assertingPartyEntityId)
+                        .singleSignOnServiceLocation(singleSignOnServiceLocation))
+                        .verifyingX509Credentials((c) -> c.add(assertingPartyVerificationCredential))
+                .build();
 
             //user provided?
-            relyingPartyRegistrationRepository(InMemoryRelyingPartyRegistrationRepository)
+            relyingPartyRegistrationRepository(InMemoryRelyingPartyRegistrationRepository, [registration])
 
             relyingPartyRegistrationRepositoryResolver(DefaultRelyingPartyRegistrationResolver, ref('relyingPartyRegistrationRepository'))
 
-            //user provided?
             authenticationConverter(Saml2AuthenticationTokenConverter, ref('relyingPartyRegistrationRepositoryResolver'))
 
             authenticationRequestRepository(HttpSessionSaml2AuthenticationRequestRepository)
 
-            authenticationRequestResolver(OpenSaml4AuthenticationRequestFactory)
+            authenticationRequestFactory(OpenSaml4AuthenticationRequestFactory)
 
             relyingPartyRegistrationResolver(DefaultRelyingPartyRegistrationResolver, ref('relyingPartyRegistrationRepository'))
 
@@ -465,7 +502,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 authenticationRequestRepository = ref('authenticationRequestRepository')
             }
 
-            saml2AuthenticationRequestFilter(Saml2WebSsoAuthenticationRequestFilter, ref('authenticationRequestResolver')) {
+            saml2AuthenticationRequestFilter(Saml2WebSsoAuthenticationRequestFilter, ref('contextResolver'), ref('authenticationRequestFactory')) {
                 authenticationRequestRepository = ref('authenticationRequestRepository')
             }
 
