@@ -13,7 +13,7 @@ buildscript {
     }
     dependencies {
         classpath "org.grails:grails-gradle-plugin:$grailsGradlePluginVersion"
-        classpath "com.bertramlabs.plugins:asset-pipeline-gradle:3.3.4"
+        classpath "com.bertramlabs.plugins:asset-pipeline-gradle:3.4.4"
         classpath "org.jfrog.buildinfo:build-info-extractor-gradle:4.28.3"
     }
 }
@@ -75,13 +75,14 @@ dependencies {
     implementation "org.grails.plugins:scaffolding"
     implementation "org.grails.plugins:gsp"
 
-    implementation 'org.grails.plugins:spring-security-core:4.0.0.RC2'
+    implementation 'org.grails.plugins:spring-security-core:5.0.0-RC1'
+    implementation 'org.springframework.security:spring-security-saml2-service-provider:5.6.2'
     implementation 'org.grails.plugins:spring-security-saml:4.0.3'
 
     console "org.grails:grails-console"
     profile "org.grails.profiles:web-plugin"
     implementation "org.grails:grails-plugin-services"
-    runtimeOnly "com.bertramlabs.plugins:asset-pipeline-gradle:3.3.4"
+    runtimeOnly "com.bertramlabs.plugins:asset-pipeline-gradle:3.4.4"
     testCompileOnly "org.grails:grails-gorm-testing-support"
     //testCompileOnly "org.grails:grails-plugin-testing"
     testCompileOnly "org.grails:grails-web-testing-support"
@@ -100,6 +101,7 @@ bootRun {
     String springProfilesActive = 'spring.profiles.active'
     systemProperty springProfilesActive, System.getProperty(springProfilesActive)
 }
+bootJar.enabled = false
 
 assets {
     packagePlugin = true

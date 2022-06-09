@@ -443,7 +443,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             securityFilterChainRegistration(String, "")
 
 
-            String loginProcessingUrl = "/login/saml2/sso/{registrationId}";
+            String loginProcessingUrl = "/login/saml2/sso/{registrationId}"
 
             //user provided?
             relyingPartyRegistrationRepository(InMemoryRelyingPartyRegistrationRepository)
@@ -470,18 +470,17 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             }
 
             println '...finished configuring Spring Security SAML'
-            /*String filterProcessingUrl = "/saml2/authenticate/{registrationId}";
-            @Override
-            public void configure(B http) throws Exception {
-                http.addFilter(this.authenticationRequestEndpoint.build(http));
-                super.configure(http);
-            }*/
+            //String filterProcessingUrl = "/saml2/authenticate/{registrationId}";
+            //public void configure(B http) throws Exception {
+                //http.addFilter(this.authenticationRequestEndpoint.build(http));
+                //super.configure(http);
 
             // user defined?
             //authenticationManager()
 
             //authenticationProvider(OpenSaml4AuthenticationProvider);
         }
+    }
 
     void doWithDynamicMethods() {
         // TODO Implement registering dynamic methods to classes (optional)
