@@ -446,6 +446,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             String baseUrl = "https://tuorga-qa.rz.tu-bs.de:443"
 
             String loginProcessingUrl = "/login/saml2/sso/${registrationId}"
+            println "LOGIN ${loginProcessingUrl}"
 
 
             //service provider
