@@ -87,6 +87,28 @@ import java.security.cert.X509Certificate
 import org.springframework.security.saml2.provider.service.metadata.OpenSamlMetadataResolver
 import org.springframework.security.saml2.provider.service.web.Saml2MetadataFilter
 
+import org.springframework.security.web.authentication.logout.LogoutHandler
+import org.springframework.security.web.util.matcher.AndRequestMatcher
+import javax.servlet.http.HttpServletRequest
+import java.util.function.Predicate
+import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal
+import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.security.saml2.provider.service.authentication.logout.OpenSamlLogoutResponseValidator;
+import org.springframework.security.saml2.provider.service.authentication.logout.OpenSamlLogoutRequestValidator;
+import org.springframework.security.saml2.provider.service.web.authentication.logout.OpenSaml3LogoutRequestResolver;
+import org.springframework.security.saml2.provider.service.web.authentication.logout.HttpSessionLogoutRequestRepository;
+import org.springframework.security.saml2.provider.service.web.authentication.logout.OpenSaml3LogoutResponseResolver;
+import org.springframework.security.saml2.provider.service.web.authentication.logout.Saml2LogoutRequestFilter;
+import org.springframework.security.saml2.provider.service.web.authentication.logout.Saml2LogoutResponseFilter;
+import org.springframework.security.saml2.provider.service.web.authentication.logout.Saml2RelyingPartyInitiatedLogoutSuccessHandler;
+import org.springframework.security.web.authentication.logout.LogoutFilter;
+import org.springframework.security.web.authentication.logout.LogoutSuccessEventPublishingLogoutHandler;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
+import org.springframework.security.web.util.matcher.RequestMatcher;
+
+//import org.springframework.security.core.Authentication;
+//import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
+
 class SpringSecuritySamlGrailsPlugin extends Plugin {
 
     // the version or versions of Grails the plugin is designed for
@@ -145,10 +167,11 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 alwaysUseDefaultTargetUrl = conf.saml.alwaysUseAfterLoginUrl ?: false
                 defaultTargetUrl = conf.saml.afterLoginUrl
             }
-
+            */
             logoutSuccessHandler(SimpleUrlLogoutSuccessHandler) {
                 defaultTargetUrl = conf.saml.afterLogoutUrl
             }
+            /*
 
             def idpSelectionPath = conf.saml.entryPoint.idpSelectionPath
             samlEntryPoint(SAMLEntryPoint) {
@@ -158,8 +181,6 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 }
                 defaultProfileOptions = ref('webProfileOptions')
             }
-
-            metadataGenerator(MetadataGenerator)
 
             // TODO: Update to handle any type of meta data providers for default to file based instead http provider.
             log.debug "Dynamically defining bean metadata providers... "
@@ -327,10 +348,11 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             redirectStrategy(DefaultRedirectStrategy) {
                 contextRelative = conf.redirectStrategy.contextRelative // false
             }
-
+            */
             logoutHandler(SecurityContextLogoutHandler) {
                 invalidateHttpSession = true
             }
+            /*
 
             samlLogoutFilter(SAMLLogoutFilter,
                     ref('logoutSuccessHandler'), ref('logoutHandler'), ref('logoutHandler'))
@@ -341,12 +363,6 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             logoutprofile(SingleLogoutProfileImpl)
 
             //bootStrap(CustomSAMLBootstrap)
-
-            velocityEngine(VelocityFactory) { bean ->
-                bean.factoryMethod = "getEngine"
-            }
-
-            parserPool(BasicParserPool)
 
             securityTagLib(SamlTagLib) {
                 springSecurityService = ref('springSecurityService')
@@ -369,6 +385,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             //by overriding them with an empty string
             springSecurityFilterChain(String, "")
             securityFilterChainRegistration(String, "")*/
+
             String registrationId = "simplesamlphp";
             String baseUrl = "https://tuorga-qa.rz.tu-bs.de:443"
 
@@ -444,17 +461,100 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 authenticationRequestRepository = ref('authenticationRequestRepository')
             }
 
+            String logoutUrl = "/logout";
+            String logoutResponseUrl = "/logout/saml2/slo";
+            String logoutRequestUrl = "/logout/saml2/slo";
+
+            def logoutMatcher = AndRequestMatcher(
+                new AntPathRequestMatcher(logoutUrl, "POST"),
+                new Saml2RequestMatcher())
+
+            def logoutRequestMatcher = new AndRequestMatcher(
+                new AntPathRequestMatcher(logoutRequestUrl),
+                new ParameterRequestMatcher("SAMLRequest"))
+
+            def logoutResponseMatcher = new AndRequestMatcher(
+                new AntPathRequestMatcher(logoutResponseUrl),
+                new ParameterRequestMatcher("SAMLResponse"))
+
+            logoutResponseValidator(OpenSamlLogoutResponseValidator)
+            logoutResponseResolver(OpenSaml3LogoutResponseResolver, ref('relyingPartyRegistrationRepositoryResolver'))
+
+            logoutRequestRepository(HttpSessionLogoutRequestRepository)
+            logoutRequestValidator(OpenSamlLogoutRequestValidator)
+            logoutRequestResolver(OpenSaml3LogoutRequestResolver, ref('relyingPartyRegistrationRepositoryResolver'))
+
+            LogoutHandler[] logoutHandlers = [
+                new SecurityContextLogoutHandler(),
+                new LogoutSuccessEventPublishingLogoutHandler()
+            ].toArray(new LogoutHandler[2]);
+
+            saml2LogoutRequestFilter(Saml2LogoutRequestFilter, ref('relyingPartyRegistrationRepositoryResolver'),
+                    ref('logoutRequestValidator'), ref('logoutResponseResolver'), logoutHandlers) {
+                logoutRequestMatcher = logoutRequestMatcher
+            }
+
+            saml2LogoutResponseFilter(Saml2LogoutResponseFilter, ref('relyingPartyRegistrationRepositoryResolver'),
+                    ref('logoutResponseValidator'), ref('logoutSuccessHandler')) {
+                logoutRequestMatcher = logoutResponseMatcher
+                logoutRequestRepository = ref('logoutRequestRepository')
+            }
+
+            logoutRequestSuccessHandler(Saml2RelyingPartyInitiatedLogoutSuccessHandler, ref('logoutRequestResolver'))
+
+            relyingPartyLogoutFilter(LogoutFilter, ref('logoutRequestSuccessHandler'), logoutHandlers) {
+                logoutRequestMatcher = logoutMatcher
+            }
+
+
+            /*public final class Saml2LogoutConfigurer<H extends HttpSecurityBuilder<H>>
+            		extends AbstractHttpConfigurer<Saml2LogoutConfigurer<H>, H> {
+
+            	@Override
+            	public void configure(H http) throws Exception {
+            		LogoutConfigurer<H> logout = http.getConfigurer(LogoutConfigurer.class);
+            		if (logout != null) {
+            			this.logoutHandlers = logout.getLogoutHandlers();
+            			this.logoutSuccessHandler = logout.getLogoutSuccessHandler();
+            		}
+            	}
+            }*/
+
             println '...finished configuring Spring Security SAML'
             //String filterProcessingUrl = "/saml2/authenticate/{registrationId}";
-            //public void configure(B http) throws Exception {
-                //http.addFilter(this.authenticationRequestEndpoint.build(http));
-                //super.configure(http);
-
-            // user defined?
-            //authenticationManager()
 
             //authenticationProvider(OpenSamlAuthenticationProvider);
         }
+    }
+
+    private static class Saml2RequestMatcher implements RequestMatcher {
+
+        @Override
+        public boolean matches(HttpServletRequest request) {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null) {
+                return false;
+            }
+            return authentication.getPrincipal() instanceof Saml2AuthenticatedPrincipal;
+        }
+
+    }
+
+    private static class ParameterRequestMatcher implements RequestMatcher {
+
+        Predicate<String> test = Objects::nonNull;
+
+        String name;
+
+        ParameterRequestMatcher(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public boolean matches(HttpServletRequest request) {
+            return this.test.test(request.getParameter(this.name));
+        }
+
     }
 
     void doWithDynamicMethods() {
