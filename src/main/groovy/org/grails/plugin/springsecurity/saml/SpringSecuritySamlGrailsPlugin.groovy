@@ -82,6 +82,8 @@ import org.springframework.security.saml2.core.Saml2X509Credential
 import java.security.KeyStore
 import java.security.KeyStore.PrivateKeyEntry
 import java.security.KeyStore.PasswordProtection
+import org.opensaml.security.x509.X509Support
+import java.security.cert.X509Certificate
 
 class SpringSecuritySamlGrailsPlugin extends Plugin {
 
@@ -379,7 +381,6 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
 
             samlLogoutProcessingFilter(SAMLLogoutProcessingFilter,
                     ref('logoutSuccessHandler'), ref('logoutHandler'))
-
             webSSOprofileConsumer(WebSSOProfileConsumerImpl){
                 responseSkew = conf.saml.responseSkew
             }
@@ -466,22 +467,23 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 signingEntry.certificate, Saml2X509Credential.Saml2X509CredentialType.SIGNING)
 
             //identity provider
-            String assertingPartyEntityId = 'https://tuorga-qa.rz.tu-bs.de';
-            String singleSignOnServiceLocation = "https://sso.tu-bs.de/simplesaml/saml2/idp/SSOService.php";
+            String assertingPartyEntityId = 'https://tuorga-qa.rz.tu-bs.de'
+            String singleSignOnServiceLocation = "https://sso.tu-bs.de/simplesaml/saml2/idp/SSOService.php"
 
-            def verificationEntry = (PrivateKeyEntry)keystore.getEntry(verificationKey, new PasswordProtection(storePass))
-            Saml2X509Credential assertingPartyVerificationCredential = new Saml2X509Credential(verificationEntry.privateKey,
-                verificationEntry.certificate, Saml2X509Credential.Saml2X509CredentialType.SIGNING)
+            //def verificationEntry = (PrivateKeyEntry)keystore.getEntry(verificationKey, new PasswordProtection(storePass))
+            X509Certificate verificationcertificate = X509Support.decodeCertificate("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")
+            Saml2X509Credential assertingPartyVerificationCredential = new Saml2X509Credential(verificationcertificate,
+                Saml2X509Credential.Saml2X509CredentialType.VERIFICATION)
 
             RelyingPartyRegistration registration = RelyingPartyRegistration.withRegistrationId(registrationId)
                 .entityId(relyingPartyEntityId)
-                .assertionConsumerServiceLocation(assertingConsumerServiceLocation)
+                .assertionConsumerServiceLocation(assertionConsumerServiceLocation)
                 .signingX509Credentials((c) -> c.add(relyingPartySigningCredential))
                 .assertingPartyDetails((details) -> details
                         .entityId(assertingPartyEntityId)
-                        .singleSignOnServiceLocation(singleSignOnServiceLocation))
-                        .verifyingX509Credentials((c) -> c.add(assertingPartyVerificationCredential))
-                .build();
+                        .singleSignOnServiceLocation(singleSignOnServiceLocation)
+                        .verificationX509Credentials((c) -> c.add(assertingPartyVerificationCredential)))
+                .build()
 
             //user provided?
             relyingPartyRegistrationRepository(InMemoryRelyingPartyRegistrationRepository, [registration])
@@ -500,6 +502,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
 
             saml2WebSsoAuthenticationFilter(Saml2WebSsoAuthenticationFilter, ref('authenticationConverter'), loginProcessingUrl) {
                 authenticationRequestRepository = ref('authenticationRequestRepository')
+                authenticationManager = ref('authenticationManager')
             }
 
             saml2AuthenticationRequestFilter(Saml2WebSsoAuthenticationRequestFilter, ref('contextResolver'), ref('authenticationRequestFactory')) {
