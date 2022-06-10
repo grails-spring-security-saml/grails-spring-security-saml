@@ -54,8 +54,8 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.saml2.provider.service.authentication.AbstractSaml2AuthenticationRequest;
-import org.springframework.security.saml2.provider.service.authentication.OpenSaml4AuthenticationProvider;
-import org.springframework.security.saml2.provider.service.authentication.OpenSaml4AuthenticationRequestFactory;
+import org.springframework.security.saml2.provider.service.authentication.OpenSamlAuthenticationProvider;
+import org.springframework.security.saml2.provider.service.authentication.OpenSamlAuthenticationRequestFactory;
 import org.springframework.security.saml2.provider.service.authentication.OpenSamlAuthenticationProvider;
 import org.springframework.security.saml2.provider.service.authentication.OpenSamlAuthenticationRequestFactory;
 import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticationRequestFactory;
@@ -84,6 +84,8 @@ import java.security.KeyStore.PrivateKeyEntry
 import java.security.KeyStore.PasswordProtection
 import org.opensaml.security.x509.X509Support
 import java.security.cert.X509Certificate
+import org.springframework.security.saml2.provider.service.metadata.OpenSamlMetadataResolver
+import org.springframework.security.saml2.provider.service.web.Saml2MetadataFilter
 
 class SpringSecuritySamlGrailsPlugin extends Plugin {
 
@@ -127,10 +129,6 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
 
             /*
             //Due to Spring DSL limitations, need to import these beans as XML definitions
-            def beansFile = "classpath:security/springSecuritySamlBeans.xml"
-            println "Importing beans from ${beansFile}..."
-            delegate.importBeans beansFile
-
             xmlns context:"http://www.springframework.org/schema/context"
             context.'annotation-config'()
             context.'component-scan'('base-package': "org.springframework.security.saml")
@@ -152,17 +150,6 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 defaultTargetUrl = conf.saml.afterLogoutUrl
             }
 
-            SAMLLogger(SAMLDefaultLogger)
-
-            if(!getResource(conf.saml.keyManager.storeFile).exists()) {
-                throw new IOException("Keystore cannot be loaded from file '${conf.saml.keyManager.storeFile}'. " +
-                         "Please check that the path configured in " +
-                         "'grails.plugin.springsecurity.saml.keyManager.storeFile' in your application.yml is correct.")
-            }
-
-            keyManager(JKSKeyManager,
-                    conf.saml.keyManager.storeFile, conf.saml.keyManager.storePass, conf.saml.keyManager.passwords, conf.saml.keyManager.defaultKey)
-
             def idpSelectionPath = conf.saml.entryPoint.idpSelectionPath
             samlEntryPoint(SAMLEntryPoint) {
                 filterProcessesUrl = conf.auth.loginFormUrl 						// '/saml/login'
@@ -170,14 +157,6 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                     idpSelectionPath = idpSelectionPath 					// '/index.gsp'
                 }
                 defaultProfileOptions = ref('webProfileOptions')
-            }
-
-            webProfileOptions(WebSSOProfileOptions) {
-                includeScoping = false
-            }
-
-            metadataFilter(MetadataDisplayFilterUTF8) {
-                filterProcessesUrl = conf.saml.metadata.url 						// '/saml/metadata'
             }
 
             metadataGenerator(MetadataGenerator)
@@ -193,54 +172,40 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                     metadataTrustCheck = false
                     metadataRequireSignature = false
 
-                    if(v.startsWith("https:") || v.startsWith("http:")) {
-                        def timeout = conf.saml.metadata.timeout
-                        def url = v
-                        httpMetadataProvider(HTTPMetadataProvider, url, timeout) { bean ->
-                            parserPool = ref('parserPool')
-                        }
-                        extMetaDataDelegateBean.constructorArgs = [ref('httpMetadataProvider'), new ExtendedMetadata()]
-                    } else {
-                        filesystemMetadataProvider(FilesystemMetadataProvider) { bean ->
-                            if (v.startsWith("/") || v.indexOf(':') == 1) {
-                                File resource = new File(v)
-                                bean.constructorArgs = [resource]
-                            } else {
-                                def resource = new ClassPathResource(v)
-                                if(!resource.exists()) {
-                                    throw new IOException("Identity provider metadata cannot be loaded from file '${v}'. " +
-                                             "Please check that the path configured in " +
-                                             "'grails.plugin.springsecurity.saml.providers.${k}' in your application.yml is correct.")
-                                }
+                    filesystemMetadataProvider(FilesystemMetadataProvider) { bean ->
+                        if (v.startsWith("/") || v.indexOf(':') == 1) {
+                            File resource = new File(v)
+                            bean.constructorArgs = [resource]
+                        } else {
+                            def resource = new ClassPathResource(v)
+                            try {
+                                bean.constructorArgs = [resource.getFile()]
+                            } catch (FileNotFoundException fe) {
+                                final InputStream is = resource.getInputStream();
                                 try {
-                                    bean.constructorArgs = [resource.getFile()]
-                                } catch (FileNotFoundException fe) {
-                                    final InputStream is = resource.getInputStream();
+                                    final InputStreamReader reader = new InputStreamReader(is);
                                     try {
-                                        final InputStreamReader reader = new InputStreamReader(is);
-                                        try {
-                                            final Document headerDoc = new SAXBuilder().build(reader);
-                                            XMLOutputter outputter = new XMLOutputter(Format.getPrettyFormat());
-                                            String xmlString = outputter.outputString(headerDoc);
-                                            File temp = File.createTempFile("idp-local",".xml");
-                                            BufferedWriter bw = new BufferedWriter(new FileWriter(temp));
-                                            bw.write(xmlString);
-                                            bw.close();
-                                            bean.constructorArgs = [temp]
-                                            temp.deleteOnExit();
-                                        } finally {
-                                            reader.close();
-                                        }
+                                        final Document headerDoc = new SAXBuilder().build(reader);
+                                        XMLOutputter outputter = new XMLOutputter(Format.getPrettyFormat());
+                                        String xmlString = outputter.outputString(headerDoc);
+                                        File temp = File.createTempFile("idp-local",".xml");
+                                        BufferedWriter bw = new BufferedWriter(new FileWriter(temp));
+                                        bw.write(xmlString);
+                                        bw.close();
+                                        bean.constructorArgs = [temp]
+                                        temp.deleteOnExit();
                                     } finally {
-                                        is.close();
+                                        reader.close();
                                     }
+                                } finally {
+                                    is.close();
                                 }
                             }
-                            parserPool = ref('parserPool')
                         }
-
-                        extMetaDataDelegateBean.constructorArgs = [ref('filesystemMetadataProvider'), new ExtendedMetadata()]
+                        parserPool = ref('parserPool')
                     }
+
+                    extMetaDataDelegateBean.constructorArgs = [ref('filesystemMetadataProvider'), new ExtendedMetadata()]
                 }
 
                 providers << ref(providerBeanName)
@@ -258,11 +223,6 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                             spMetadataProviderBean.constructorArgs = [spResource]
                         }else{
                             def spResource = new ClassPathResource(spFile)
-                            if(!spResource.exists()) {
-                                throw new IOException("Service provider metadata cannot be loaded from file '${spFile}'. " +
-                                         "Please check that the path configured in " +
-                                         "'grails.plugin.springsecurity.saml.metadata.sp.file' in your application.yml is correct.")
-                            }
                             try{
                                 spMetadataProviderBean.constructorArgs = [spResource.getFile()]
                             } catch(FileNotFoundException fe){
@@ -328,8 +288,6 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 }
             }
 
-
-
             userDetailsService(SpringSamlUserDetailsService) {
                 grailsApplication = grailsApplication //(GrailsApplication)ref('grailsApplication')
                 authorityClassName = conf.authority.className
@@ -370,8 +328,6 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 contextRelative = conf.redirectStrategy.contextRelative // false
             }
 
-            sessionFixationProtectionStrategy(SessionFixationProtectionStrategy)
-
             logoutHandler(SecurityContextLogoutHandler) {
                 invalidateHttpSession = true
             }
@@ -381,37 +337,8 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
 
             samlLogoutProcessingFilter(SAMLLogoutProcessingFilter,
                     ref('logoutSuccessHandler'), ref('logoutHandler'))
-            webSSOprofileConsumer(WebSSOProfileConsumerImpl){
-                responseSkew = conf.saml.responseSkew
-            }
-
-            webSSOprofile(WebSSOProfileImpl)
-
-            ecpprofile(WebSSOProfileECPImpl)
 
             logoutprofile(SingleLogoutProfileImpl)
-
-            postBinding(HTTPPostBinding, ref('parserPool'), ref('velocityEngine'))
-
-            redirectBinding(HTTPRedirectDeflateBinding, ref('parserPool'))
-
-            artifactBinding(HTTPArtifactBinding,
-                    ref('parserPool'),
-                    ref('velocityEngine'),
-                    ref('artifactResolutionProfile')
-            )
-
-            artifactResolutionProfile(ArtifactResolutionProfileImpl, ref('httpClient')) {
-                processor = ref('soapProcessor')
-            }
-
-            httpClient(HttpClient)
-
-            soapProcessor(SAMLProcessorImpl, ref('soapBinding'))
-
-            soapBinding(HTTPSOAP11Binding, ref('parserPool'))
-
-            paosBinding(HTTPPAOS11Binding, ref('parserPool'))
 
             //bootStrap(CustomSAMLBootstrap)
 
@@ -445,13 +372,15 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             String registrationId = "simplesamlphp";
             String baseUrl = "https://tuorga-qa.rz.tu-bs.de:443"
 
-            String loginProcessingUrl = "/login/saml2/sso/${registrationId}"
+            String loginProcessingUrl = "https://tuorga-qa.rz.tu-bs.de:443/saml/SSO"
+            //"/saml2/sso/${registrationId}"
             println "LOGIN ${loginProcessingUrl}"
-
+            // /saml2/authenticate/simplesamlphp
 
             //service provider
-            String relyingPartyEntityId = "${baseUrl}/saml2/service-provider-metadata/${registrationId}";
-            String assertionConsumerServiceLocation = "${baseUrl}/login/saml2/sso/${registrationId}";
+            String relyingPartyEntityId = conf.saml.metadata.sp.defaults.entityID
+            String assertionConsumerServiceLocation = "https://tuorga-qa.rz.tu-bs.de:443/saml/SSO"
+            //"${baseUrl}/saml2/sso/${registrationId}";
 
             def storePass = conf.saml.keyManager.storePass.toCharArray()
             String signingKey = conf.saml.metadata.sp.defaults.signingKey
@@ -465,10 +394,10 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             def signingEntry = (PrivateKeyEntry)keystore.getEntry(signingKey, new PasswordProtection(storePass))
 
             Saml2X509Credential relyingPartySigningCredential = new Saml2X509Credential(signingEntry.privateKey,
-                signingEntry.certificate, Saml2X509Credential.Saml2X509CredentialType.SIGNING)
+                signingEntry.certificate, Saml2X509Credential.Saml2X509CredentialType.SIGNING, Saml2X509Credential.Saml2X509CredentialType.DECRYPTION)
 
             //identity provider
-            String assertingPartyEntityId = 'https://tuorga-qa.rz.tu-bs.de'
+            String assertingPartyEntityId = conf.saml.metadata.defaultIdp
             String singleSignOnServiceLocation = "https://sso.tu-bs.de/simplesaml/saml2/idp/SSOService.php"
 
             //def verificationEntry = (PrivateKeyEntry)keystore.getEntry(verificationKey, new PasswordProtection(storePass))
@@ -480,6 +409,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 .entityId(relyingPartyEntityId)
                 .assertionConsumerServiceLocation(assertionConsumerServiceLocation)
                 .signingX509Credentials((c) -> c.add(relyingPartySigningCredential))
+                .decryptionX509Credentials((c) -> c.add(relyingPartySigningCredential))
                 .assertingPartyDetails((details) -> details
                         .entityId(assertingPartyEntityId)
                         .singleSignOnServiceLocation(singleSignOnServiceLocation)
@@ -491,15 +421,19 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
 
             relyingPartyRegistrationRepositoryResolver(DefaultRelyingPartyRegistrationResolver, ref('relyingPartyRegistrationRepository'))
 
+            openSamlMetadataResolver(OpenSamlMetadataResolver)
+
+            saml2MetadataFilter(Saml2MetadataFilter, ref('relyingPartyRegistrationRepositoryResolver'), ref('openSamlMetadataResolver'))
+
             authenticationConverter(Saml2AuthenticationTokenConverter, ref('relyingPartyRegistrationRepositoryResolver'))
 
             authenticationRequestRepository(HttpSessionSaml2AuthenticationRequestRepository)
 
-            authenticationRequestFactory(OpenSaml4AuthenticationRequestFactory)
+            authenticationRequestFactory(OpenSamlAuthenticationRequestFactory)
 
-            relyingPartyRegistrationResolver(DefaultRelyingPartyRegistrationResolver, ref('relyingPartyRegistrationRepository'))
+            //relyingPartyRegistrationResolver(DefaultRelyingPartyRegistrationResolver, ref('relyingPartyRegistrationRepository'))
 
-            contextResolver(DefaultSaml2AuthenticationRequestContextResolver, ref('relyingPartyRegistrationResolver'))
+            contextResolver(DefaultSaml2AuthenticationRequestContextResolver, ref('relyingPartyRegistrationRepositoryResolver'))
 
             saml2WebSsoAuthenticationFilter(Saml2WebSsoAuthenticationFilter, ref('authenticationConverter'), loginProcessingUrl) {
                 authenticationRequestRepository = ref('authenticationRequestRepository')
@@ -519,7 +453,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             // user defined?
             //authenticationManager()
 
-            //authenticationProvider(OpenSaml4AuthenticationProvider);
+            //authenticationProvider(OpenSamlAuthenticationProvider);
         }
     }
 
