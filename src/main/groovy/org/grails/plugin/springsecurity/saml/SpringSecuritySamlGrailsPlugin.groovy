@@ -160,12 +160,13 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             -----
             logoutRequestSuccessHandler
             -----
+            */
 
             successRedirectHandler(SavedRequestAwareAuthenticationSuccessHandler) {
                 alwaysUseDefaultTargetUrl = conf.saml.alwaysUseAfterLoginUrl ?: false
                 defaultTargetUrl = conf.saml.afterLoginUrl
             }
-            */
+
             logoutSuccessHandler(SimpleUrlLogoutSuccessHandler) {
                 defaultTargetUrl = conf.saml.afterLogoutUrl
             }
@@ -241,6 +242,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 }
             }
 
+            */
             userDetailsService(SpringSamlUserDetailsService) {
                 grailsApplication = grailsApplication //(GrailsApplication)ref('grailsApplication')
                 authorityClassName = conf.authority.className
@@ -255,9 +257,14 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 userDomainClassName = conf.userLookup.userDomainClassName
             }
 
-            */
-            samlAuthenticationProvider(OpenSamlAuthenticationProvider) //GrailsSAMLAuthenticationProvider
-            /*
+            samlResponseAuthenticationConverter(SAMLResponseAuthenticationConverter)
+            samlAuthenticationProvider(OpenSamlAuthenticationProvider) {
+                responseAuthenticationConverter = ref('samlResponseAuthenticationConverter')
+            }
+            /*samlAuthenticationProvider(GrailsSAMLAuthenticationProvider) {
+                userDetails = ref('userDetailsService')
+            }*/
+
             authenticationFailureHandler(AjaxAwareAuthenticationFailureHandler) {
                 redirectStrategy = ref('redirectStrategy')
                 defaultFailureUrl = conf.saml.loginFailUrl ?: '/login/authfail?login_error=1'
@@ -268,11 +275,9 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             redirectStrategy(DefaultRedirectStrategy) {
                 contextRelative = conf.redirectStrategy.contextRelative // false
             }
-            */
             logoutHandler(SecurityContextLogoutHandler) {
                 invalidateHttpSession = true
             }
-            /*
             securityTagLib(SamlTagLib) {
                 springSecurityService = ref('springSecurityService')
                 webExpressionHandler = ref('webExpressionHandler')
@@ -290,7 +295,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             //https://github.com/jeffwils/grails-spring-security-saml/issues/63
             //remove beans from SecurityFilterAutoConfiguration.java
             //by overriding them with an empty string
-            springSecurityFilterChain(String, "")
+            /*springSecurityFilterChain(String, "")
             securityFilterChainRegistration(String, "")*/
 
             String registrationId = "simplesamlphp";
@@ -355,22 +360,15 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
 
             authenticationRequestFactory(OpenSamlAuthenticationRequestFactory)
 
-            //relyingPartyRegistrationResolver(DefaultRelyingPartyRegistrationResolver, ref('relyingPartyRegistrationRepository'))
-
             contextResolver(DefaultSaml2AuthenticationRequestContextResolver, ref('relyingPartyRegistrationRepositoryResolver'))
 
             saml2WebSsoAuthenticationFilter(Saml2WebSsoAuthenticationFilter, ref('authenticationConverter'), loginProcessingUrl) {
                 authenticationRequestRepository = ref('authenticationRequestRepository')
                 authenticationManager = ref('authenticationManager')
-            }
-            /*
-            samlProcessingFilter(SAMLProcessingFilter) {
-                authenticationManager = ref('authenticationManager')
-                authenticationSuccessHandler = ref('successRedirectHandler')
                 sessionAuthenticationStrategy = ref('sessionFixationProtectionStrategy')
+                authenticationSuccessHandler = ref('successRedirectHandler')
                 authenticationFailureHandler = ref('authenticationFailureHandler')
             }
-            */
 
             saml2AuthenticationRequestFilter(Saml2WebSsoAuthenticationRequestFilter, ref('contextResolver'), ref('authenticationRequestFactory')) {
                 authenticationRequestRepository = ref('authenticationRequestRepository')
@@ -436,8 +434,6 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
 
             println '...finished configuring Spring Security SAML'
             //String filterProcessingUrl = "/saml2/authenticate/{registrationId}";
-
-            //authenticationProvider(OpenSamlAuthenticationProvider);
         }
     }
 
