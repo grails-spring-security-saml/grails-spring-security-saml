@@ -98,6 +98,7 @@ import org.springframework.security.web.authentication.logout.LogoutSuccessEvent
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
+
 //import org.springframework.security.core.Authentication;
 //import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 
@@ -257,7 +258,10 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 userDomainClassName = conf.userLookup.userDomainClassName
             }
 
-            samlResponseAuthenticationConverter(SAMLResponseAuthenticationConverter)
+            samlResponseAuthenticationConverter(SamlResponseAuthenticationConverter) {
+                userDetailsService = ref('userDetailsService')
+            }
+
             samlAuthenticationProvider(OpenSamlAuthenticationProvider) {
                 responseAuthenticationConverter = ref('samlResponseAuthenticationConverter')
             }
@@ -275,6 +279,8 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             redirectStrategy(DefaultRedirectStrategy) {
                 contextRelative = conf.redirectStrategy.contextRelative // false
             }
+            sessionFixationProtectionStrategy(SessionFixationProtectionStrategy)
+
             logoutHandler(SecurityContextLogoutHandler) {
                 invalidateHttpSession = true
             }

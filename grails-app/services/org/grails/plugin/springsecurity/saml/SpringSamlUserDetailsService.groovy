@@ -84,17 +84,18 @@ class SpringSamlUserDetailsService extends GormUserDetailsService {
                     def samlAttributes = [:]
                     samlUserAttributeMappings.each { key, value ->
                         try {
-                            samlAttributes."$key" = user."$key"
+                            samlAttributes."$key" = [user."$key"]
                         } catch(MissingPropertyException e) {
                             logger.warn("Failed to get SAML attribute '$key' from ${user.getClass()}. Add the SAML attribute to your User domain class.")
                             logger.error "Error: ${e.message}", e
-                            def samlValue = principal.getFirstAttribute(value).toString()
+                            def samlValue = principal.getAttribute(value)
                             if (samlValue) {
+                                println "SAML ATTRIBUTE ${key} ${samlValue}"
                                 samlAttributes."$key" = samlValue
                             }
                         }
                     }
-                    userDetails.setSamlAttributes(samlAttributes)
+                    userDetails.setAttributes(samlAttributes)
                 }
 
                 return userDetails
@@ -321,7 +322,8 @@ class SpringSamlUserDetailsService extends GormUserDetailsService {
         def samlAttributes = [:]
         samlUserAttributeMappings.each { key, value ->
             try {
-                samlAttributes."$key" = user."$key"
+                println "LOADING $key -> ${user[key]} FROM DB USER"
+                samlAttributes."$key" = [user."$key"]
             } catch(MissingPropertyException e) {
                 logger.warn("Failed to get SAML attribute '$key' from ${user.getClass()}. Add the SAML attribute to your User domain class.")
                 logger.error "Error: ${e.message}", e
