@@ -8,7 +8,7 @@ import grails.core.GrailsApplication
 
 class SamlTagLib extends SecurityTagLib {
 
-    static final String LOGOUT_SLUG = '/j_spring_security_logout'
+    static final String LOGOUT_SLUG = '/logout'
     static defaultEncodeAs = [taglib:'sec']
     GrailsApplication grailsApplication
 
@@ -36,10 +36,10 @@ class SamlTagLib extends SecurityTagLib {
         def url = Holders.grailsApplication.config.grails.plugin.springsecurity.auth.loginFormUrl
         def selectIdp = attrs.remove('selectIdp')
 
-        url = "${contextPath}${url}"
-        if (!selectIdp) {
+        def samlEnabled = Holders.grailsApplication.config.grails.plugin.springsecurity.saml.active
+        if (samlEnabled) {
             def defaultIdp = Holders.grailsApplication.config.grails.plugin.springsecurity.saml.metadata.defaultIdp
-            url += "?idp=${defaultIdp}"
+            url = "/saml2/authenticate/${selectIdp ?: defaultIdp}"
         }
 
         def elementClass = generateClassAttribute(attrs)
@@ -52,15 +52,9 @@ class SamlTagLib extends SecurityTagLib {
      * {@inheritDocs}
      */
     def logoutLink = { attrs, body ->
-        def local = attrs.remove('local')
         def contextPath = request.contextPath
-
-        def url = LOGOUT_SLUG
-
-        def samlEnabled = Holders.grailsApplication.config.grails.plugin.springsecurity.saml.active
-        if(samlEnabled){
-            url = SAMLLogoutFilter.FILTER_URL
-        }
+        def local = attrs.remove('local')
+        def url = Holders.grailsApplication.config.grails.plugin.springsecurity.logout.filterProcessesUrl
 
         def elementClass = generateClassAttribute(attrs)
         def elementId = generateIdAttribute(attrs)
