@@ -99,8 +99,7 @@ import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.security.web.authentication.logout.LogoutSuccessEventPublishingLogoutHandler;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.util.matcher.RequestMatcher;
-
-
+import java.net.MalformedURLException
 
 class SpringSecuritySamlGrailsPlugin extends Plugin {
 
@@ -241,8 +240,14 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 userDetailsService = ref('userDetailsService')
                 userCache = ref('userCache')
             }
-
-            String loginProcessingUrl = "/saml2/sso/{registrationId}"
+            String loginProcessingUrl = "/login/saml2/sso/{registrationId}"
+            if(conf.saml.metadata.sp.defaults.assertionConsumerService) {
+                try {
+                        loginProcessingUrl = new URL(conf.saml.metadata.sp.defaults.assertionConsumerService).getPath()
+                } catch(MalformedURLException e) {
+                    println "Failed to get path from URL ${conf.saml.metadata.sp.defaults.assertionConsumerService}"
+                }
+            }
 
             //TODO use default identity provider as login link
             String assertingPartyEntityId = conf.saml.metadata.defaultIdp
@@ -250,18 +255,30 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             relyingPartyRegistrationRepository(InMemoryRelyingPartyRegistrationRepository, registrations)
 
             relyingPartyRegistrationRepositoryResolver(DefaultRelyingPartyRegistrationResolver, ref('relyingPartyRegistrationRepository'))
+            if(conf.saml.metadata.defaultIdp) {
+                println "Activating default registration ${conf.saml.metadata.defaultIdp} only"
+                // force the use of defaultIdp registration
+                defaultIdpRegistrationRepositoryResolver(DefaultRegistrationResolver) {
+                    relyingPartyRegistrationResolver = ref('relyingPartyRegistrationRepositoryResolver')
+                    defaultRegistration = conf.saml.metadata.defaultIdp
+                }
+
+                contextResolver(DefaultSaml2AuthenticationRequestContextResolver, ref('defaultIdpRegistrationRepositoryResolver'))
+                authenticationConverter(Saml2AuthenticationTokenConverter, ref('defaultIdpRegistrationRepositoryResolver'))
+            } else {
+                contextResolver(DefaultSaml2AuthenticationRequestContextResolver, ref('relyingPartyRegistrationRepositoryResolver'))
+                authenticationConverter(Saml2AuthenticationTokenConverter, ref('relyingPartyRegistrationRepositoryResolver'))
+            }
 
             openSamlMetadataResolver(OpenSamlMetadataResolver)
 
             saml2MetadataFilter(Saml2MetadataFilter, ref('relyingPartyRegistrationRepositoryResolver'), ref('openSamlMetadataResolver'))
 
-            authenticationConverter(Saml2AuthenticationTokenConverter, ref('relyingPartyRegistrationRepositoryResolver'))
 
             authenticationRequestRepository(HttpSessionSaml2AuthenticationRequestRepository)
 
             authenticationRequestFactory(OpenSamlAuthenticationRequestFactory)
 
-            contextResolver(DefaultSaml2AuthenticationRequestContextResolver, ref('relyingPartyRegistrationRepositoryResolver'))
 
             saml2WebSsoAuthenticationFilter(Saml2WebSsoAuthenticationFilter, ref('authenticationConverter'), loginProcessingUrl) {
                 authenticationRequestRepository = ref('authenticationRequestRepository')
