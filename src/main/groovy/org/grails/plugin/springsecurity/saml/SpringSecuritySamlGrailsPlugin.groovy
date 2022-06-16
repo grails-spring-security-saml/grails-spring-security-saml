@@ -180,7 +180,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             log.debug "Dynamically defining bean metadata providers... "
             def providers = conf.saml.metadata.providers
             providers.each { registrationId, metadataLocation ->
-                println "Registering registrationId: ${registrationId} and metadataLocation: ${metadataLocation}"
+                println "Registering registrationId ${registrationId} from ${metadataLocation}"
                 registrations << registrationFromMetadata(conf, registrationId, metadataLocation, keystore)
             }
             /*
@@ -243,7 +243,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             String loginProcessingUrl = "/login/saml2/sso/{registrationId}"
             if(conf.saml.metadata.sp.defaults.assertionConsumerService) {
                 try {
-                        loginProcessingUrl = new URL(conf.saml.metadata.sp.defaults.assertionConsumerService).getPath()
+                    loginProcessingUrl = new URL(conf.saml.metadata.sp.defaults.assertionConsumerService).getPath()
                 } catch(MalformedURLException e) {
                     println "Failed to get path from URL ${conf.saml.metadata.sp.defaults.assertionConsumerService}"
                 }
@@ -292,21 +292,9 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 authenticationRequestRepository = ref('authenticationRequestRepository')
             }
 
-            String logoutUrl = "/logout";
+            String logoutUrl = conf.logout.filterProcessesUrl;
             String logoutResponseUrl = "/logout/saml2/slo";
             String logoutRequestUrl = "/logout/saml2/slo";
-
-            def logoutMatcher = AndRequestMatcher(
-                new AntPathRequestMatcher(logoutUrl, "POST"),
-                new Saml2RequestMatcher())
-
-            def logoutRequestMatcher = new AndRequestMatcher(
-                new AntPathRequestMatcher(logoutRequestUrl),
-                new ParameterRequestMatcher("SAMLRequest"))
-
-            def logoutResponseMatcher = new AndRequestMatcher(
-                new AntPathRequestMatcher(logoutResponseUrl),
-                new ParameterRequestMatcher("SAMLResponse"))
 
             logoutResponseValidator(OpenSamlLogoutResponseValidator)
             logoutResponseResolver(OpenSaml3LogoutResponseResolver, ref('relyingPartyRegistrationRepositoryResolver'))
@@ -322,19 +310,25 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
 
             saml2LogoutRequestFilter(Saml2LogoutRequestFilter, ref('relyingPartyRegistrationRepositoryResolver'),
                     ref('logoutRequestValidator'), ref('logoutResponseResolver'), logoutHandlers) {
-                logoutRequestMatcher = logoutRequestMatcher
+                logoutRequestMatcher = new AndRequestMatcher(
+                    new AntPathRequestMatcher(logoutRequestUrl),
+                    new ParameterRequestMatcher("SAMLRequest"))
             }
 
             saml2LogoutResponseFilter(Saml2LogoutResponseFilter, ref('relyingPartyRegistrationRepositoryResolver'),
                     ref('logoutResponseValidator'), ref('logoutSuccessHandler')) {
-                logoutRequestMatcher = logoutResponseMatcher
+                logoutRequestMatcher = new AndRequestMatcher(
+                    new AntPathRequestMatcher(logoutResponseUrl),
+                    new ParameterRequestMatcher("SAMLResponse"))
                 logoutRequestRepository = ref('logoutRequestRepository')
             }
 
             logoutRequestSuccessHandler(Saml2RelyingPartyInitiatedLogoutSuccessHandler, ref('logoutRequestResolver'))
 
             relyingPartyLogoutFilter(LogoutFilter, ref('logoutRequestSuccessHandler'), logoutHandlers) {
-                logoutRequestMatcher = logoutMatcher
+                logoutRequestMatcher = new AndRequestMatcher(
+                    new AntPathRequestMatcher(logoutUrl, "POST"),
+                    new Saml2RequestMatcher())
             }
 
             println '...finished configuring Spring Security SAML'
