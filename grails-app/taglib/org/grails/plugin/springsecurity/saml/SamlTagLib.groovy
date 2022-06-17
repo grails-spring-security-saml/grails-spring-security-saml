@@ -4,6 +4,9 @@ import grails.plugin.springsecurity.SecurityTagLib
 import grails.util.Holders
 import grails.core.GrailsApplication
 import org.springframework.security.saml2.provider.service.registration.InMemoryRelyingPartyRegistrationRepository
+import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.security.core.Authentication
+import org.springframework.security.saml2.provider.service.authentication.Saml2Authentication
 
 class SamlTagLib extends SecurityTagLib {
 
@@ -59,6 +62,11 @@ class SamlTagLib extends SecurityTagLib {
         def contextPath = request.contextPath
         def local = attrs.remove('local')
         def url = Holders.grailsApplication.config.grails.plugin.springsecurity.logout.filterProcessesUrl
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication instanceof Saml2Authentication) {
+            url = "/logout/saml2"
+        }
 
         def elementClass = generateClassAttribute(attrs)
         def elementId = generateIdAttribute(attrs)

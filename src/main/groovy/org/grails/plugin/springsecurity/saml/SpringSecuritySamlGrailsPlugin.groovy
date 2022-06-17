@@ -124,7 +124,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             SpringSecurityUtils.registerFilter 'saml2AuthenticationRequestFilter', SecurityFilterPosition.SECURITY_CONTEXT_FILTER.order + 2
             SpringSecurityUtils.registerFilter 'saml2LogoutRequestFilter', SecurityFilterPosition.SECURITY_CONTEXT_FILTER.order + 3
             SpringSecurityUtils.registerFilter 'saml2LogoutResponseFilter', SecurityFilterPosition.SECURITY_CONTEXT_FILTER.order + 4
-            SpringSecurityUtils.registerFilter 'relyingPartyLogoutFilter', SecurityFilterPosition.LOGOUT_FILTER.order + 1
+            SpringSecurityUtils.registerFilter 'relyingPartyLogoutFilter', SecurityFilterPosition.SECURITY_CONTEXT_FILTER.order + 6
 
             successRedirectHandler(SavedRequestAwareAuthenticationSuccessHandler) {
                 alwaysUseDefaultTargetUrl = conf.saml.alwaysUseAfterLoginUrl ?: false
@@ -262,7 +262,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 authenticationRequestRepository = ref('authenticationRequestRepository')
             }
 
-            String logoutUrl = conf.logout.filterProcessesUrl;
+            String logoutUrl = "/logout/saml2"
             String logoutResponseUrl = "/logout/saml2/slo";
             String logoutRequestUrl = "/logout/saml2/slo";
 
@@ -297,12 +297,11 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
 
             relyingPartyLogoutFilter(LogoutFilter, ref('logoutRequestSuccessHandler'), logoutHandlers) {
                 logoutRequestMatcher = new AndRequestMatcher(
-                    new AntPathRequestMatcher(logoutUrl, "POST"),
+                    new AntPathRequestMatcher(logoutUrl),
                     new Saml2RequestMatcher())
             }
 
             println '...finished configuring Spring Security SAML'
-            //String filterProcessingUrl = "/saml2/authenticate/{registrationId}";
         }
     }
 
