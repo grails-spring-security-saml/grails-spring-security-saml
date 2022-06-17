@@ -153,16 +153,6 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             -----
             */
 
-            /*
-            def idpSelectionPath = conf.saml.entryPoint.idpSelectionPath
-            samlEntryPoint(SAMLEntryPoint) {
-                filterProcessesUrl = conf.auth.loginFormUrl // '/saml/login'
-                if (idpSelectionPath) {
-                    idpSelectionPath = idpSelectionPath // '/index.gsp'
-                }
-            }
-            */
-
             successRedirectHandler(SavedRequestAwareAuthenticationSuccessHandler) {
                 alwaysUseDefaultTargetUrl = conf.saml.alwaysUseAfterLoginUrl ?: false
                 defaultTargetUrl = conf.saml.afterLoginUrl
@@ -183,12 +173,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 println "Registering registrationId ${registrationId} from ${metadataLocation}"
                 registrations << registrationFromMetadata(conf, registrationId, metadataLocation, keystore)
             }
-            /*
-            if(conf.saml.metadata?.defaultIdp != '') {
-                defaultIDP = conf.saml.metadata?.defaultIdp
-            }
-            // TODO use defaultIDP for the default login link
-            */
+
             userDetailsService(SpringSamlUserDetailsService) {
                 grailsApplication = grailsApplication
                 authorityClassName = conf.authority.className
@@ -217,6 +202,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 useForward = conf.failureHandler.useForward // false
                 ajaxAuthenticationFailureUrl = conf.failureHandler.ajaxAuthFailUrl // '/login/authfail?ajax=true'
                 exceptionMappings = conf.failureHandler.exceptionMappings // [:]
+                allowSessionCreation = conf.failureHandler.allowSessionCreation // true
             }
             redirectStrategy(DefaultRedirectStrategy) {
                 contextRelative = conf.redirectStrategy.contextRelative // false
@@ -240,46 +226,50 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 userDetailsService = ref('userDetailsService')
                 userCache = ref('userCache')
             }
-            String loginProcessingUrl = "/login/saml2/sso/{registrationId}"
-            if(conf.saml.metadata.sp.defaults.assertionConsumerService) {
+
+            relyingPartyRegistrationRepository(InMemoryRelyingPartyRegistrationRepository, registrations)
+
+            relyingPartyRegistrationRepositoryResolver(DefaultRelyingPartyRegistrationResolver, ref('relyingPartyRegistrationRepository'))
+
+            if(conf.saml.metadata.defaultIdp && conf.saml.metadata.sp.defaults.assertionConsumerService) {
+                String loginProcessingUrl = null
                 try {
                     loginProcessingUrl = new URL(conf.saml.metadata.sp.defaults.assertionConsumerService).getPath()
                 } catch(MalformedURLException e) {
                     println "Failed to get path from URL ${conf.saml.metadata.sp.defaults.assertionConsumerService}"
                 }
-            }
+                if (loginProcessingUrl != null) {
+                    println "Activating default registration ${conf.saml.metadata.defaultIdp} only"
+                    // force the use of defaultIdp registration
+                    defaultIdpRegistrationRepositoryResolver(DefaultRegistrationResolver) {
+                        relyingPartyRegistrationResolver = ref('relyingPartyRegistrationRepositoryResolver')
+                        defaultRegistration = conf.saml.metadata.defaultIdp
+                    }
 
-            //TODO use default identity provider as login link
-            String assertingPartyEntityId = conf.saml.metadata.defaultIdp
+                    defaultIdpAuthenticationConverter(Saml2AuthenticationTokenConverter, ref('defaultIdpRegistrationRepositoryResolver'))
 
-            relyingPartyRegistrationRepository(InMemoryRelyingPartyRegistrationRepository, registrations)
-
-            relyingPartyRegistrationRepositoryResolver(DefaultRelyingPartyRegistrationResolver, ref('relyingPartyRegistrationRepository'))
-            if(conf.saml.metadata.defaultIdp) {
-                println "Activating default registration ${conf.saml.metadata.defaultIdp} only"
-                // force the use of defaultIdp registration
-                defaultIdpRegistrationRepositoryResolver(DefaultRegistrationResolver) {
-                    relyingPartyRegistrationResolver = ref('relyingPartyRegistrationRepositoryResolver')
-                    defaultRegistration = conf.saml.metadata.defaultIdp
+                    defaultIdpSaml2WebSsoAuthenticationFilter(Saml2WebSsoAuthenticationFilter, ref('defaultIdpAuthenticationConverter'), loginProcessingUrl) {
+                        authenticationRequestRepository = ref('authenticationRequestRepository')
+                        authenticationManager = ref('authenticationManager')
+                        sessionAuthenticationStrategy = ref('sessionFixationProtectionStrategy')
+                        authenticationSuccessHandler = ref('successRedirectHandler')
+                        authenticationFailureHandler = ref('authenticationFailureHandler')
+                    }
+                    SpringSecurityUtils.registerFilter 'defaultIdpSaml2WebSsoAuthenticationFilter', SecurityFilterPosition.SECURITY_CONTEXT_FILTER.order + 5
                 }
-
-                contextResolver(DefaultSaml2AuthenticationRequestContextResolver, ref('defaultIdpRegistrationRepositoryResolver'))
-                authenticationConverter(Saml2AuthenticationTokenConverter, ref('defaultIdpRegistrationRepositoryResolver'))
-            } else {
-                contextResolver(DefaultSaml2AuthenticationRequestContextResolver, ref('relyingPartyRegistrationRepositoryResolver'))
-                authenticationConverter(Saml2AuthenticationTokenConverter, ref('relyingPartyRegistrationRepositoryResolver'))
             }
+            contextResolver(DefaultSaml2AuthenticationRequestContextResolver, ref('relyingPartyRegistrationRepositoryResolver'))
+            authenticationConverter(Saml2AuthenticationTokenConverter, ref('relyingPartyRegistrationRepositoryResolver'))
 
             openSamlMetadataResolver(OpenSamlMetadataResolver)
 
             saml2MetadataFilter(Saml2MetadataFilter, ref('relyingPartyRegistrationRepositoryResolver'), ref('openSamlMetadataResolver'))
 
-
             authenticationRequestRepository(HttpSessionSaml2AuthenticationRequestRepository)
 
             authenticationRequestFactory(OpenSamlAuthenticationRequestFactory)
 
-
+            String loginProcessingUrl = "/login/saml2/sso/{registrationId}"
             saml2WebSsoAuthenticationFilter(Saml2WebSsoAuthenticationFilter, ref('authenticationConverter'), loginProcessingUrl) {
                 authenticationRequestRepository = ref('authenticationRequestRepository')
                 authenticationManager = ref('authenticationManager')
