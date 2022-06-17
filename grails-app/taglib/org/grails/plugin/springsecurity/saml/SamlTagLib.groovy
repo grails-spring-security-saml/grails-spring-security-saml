@@ -2,7 +2,6 @@ package org.grails.plugin.springsecurity.saml
 
 import grails.plugin.springsecurity.SecurityTagLib
 import grails.util.Holders
-import org.springframework.security.saml.SAMLLogoutFilter
 import grails.core.GrailsApplication
 
 

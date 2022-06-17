@@ -14,29 +14,6 @@ import org.springframework.security.web.authentication.SavedRequestAwareAuthenti
 import org.springframework.security.web.authentication.logout.SimpleUrlLogoutSuccessHandler
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler
 import org.springframework.security.web.authentication.session.SessionFixationProtectionStrategy
-import org.springframework.security.saml.SAMLEntryPoint
-import org.springframework.security.saml.SAMLProcessingFilter
-import org.springframework.security.saml.SAMLLogoutFilter
-import org.springframework.security.saml.SAMLLogoutProcessingFilter
-import org.springframework.security.saml.websso.WebSSOProfileOptions
-import org.springframework.security.saml.websso.WebSSOProfileConsumerImpl
-import org.springframework.security.saml.websso.WebSSOProfileImpl
-import org.springframework.security.saml.websso.WebSSOProfileECPImpl
-import org.springframework.security.saml.websso.ArtifactResolutionProfileImpl
-import org.springframework.security.saml.processor.HTTPPostBinding
-import org.springframework.security.saml.processor.HTTPRedirectDeflateBinding
-import org.springframework.security.saml.processor.HTTPArtifactBinding
-import org.springframework.security.saml.processor.HTTPSOAP11Binding
-import org.springframework.security.saml.processor.HTTPPAOS11Binding
-import org.springframework.security.saml.processor.SAMLProcessorImpl
-import org.springframework.security.saml.metadata.ExtendedMetadata
-import org.springframework.security.saml.metadata.ExtendedMetadataDelegate
-import org.springframework.security.saml.metadata.MetadataDisplayFilter
-import org.springframework.security.saml.metadata.MetadataGenerator
-import org.springframework.security.saml.metadata.CachingMetadataManager
-import org.springframework.security.saml.log.SAMLDefaultLogger
-import org.springframework.security.saml.key.JKSKeyManager
-import org.opensaml.saml2.metadata.provider.FilesystemMetadataProvider
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -239,11 +216,14 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                     println "Failed to get path from URL ${conf.saml.metadata.sp.defaults.assertionConsumerService}"
                 }
                 if (loginProcessingUrl != null) {
-                    println "Activating default registration ${conf.saml.metadata.defaultIdp} only"
+                    println "Activating default registration ${conf.saml.metadata.defaultIdp}"
+
                     // force the use of defaultIdp registration
                     defaultIdpRegistrationRepositoryResolver(DefaultRegistrationResolver) {
                         relyingPartyRegistrationResolver = ref('relyingPartyRegistrationRepositoryResolver')
-                        defaultRegistration = conf.saml.metadata.defaultIdp
+                        defaultRegistration = (registrations
+                            .find{ it.assertingPartyDetails.entityId == conf.saml.metadata.defaultIdp }.registrationId
+                            ?: conf.saml.metadata.defaultIdp)
                     }
 
                     defaultIdpAuthenticationConverter(Saml2AuthenticationTokenConverter, ref('defaultIdpRegistrationRepositoryResolver'))

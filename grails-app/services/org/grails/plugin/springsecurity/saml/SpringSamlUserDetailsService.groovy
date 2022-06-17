@@ -23,7 +23,6 @@ import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal
-import org.springframework.security.saml.userdetails.SAMLUserDetailsService
 import grails.plugin.springsecurity.SpringSecurityUtils
 import org.springframework.security.core.userdetails.UserDetails
 import groovy.lang.MissingPropertyException
