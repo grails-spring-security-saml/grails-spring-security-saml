@@ -138,3 +138,28 @@ publishing {
        }
    }
 }
+
+artifactory {
+    contextUrl = "https://grailsrepo.rz.tu-bs.de/artifactory/"
+    publish {
+        repository {
+            repoKey = 'tubs-grails'
+            username = System.getenv("GRAILSREPO_USER")
+            password = System.getenv("GRAILSREPO_PASS")
+            maven = true
+
+        }
+        defaults {
+            publications('maven')
+        }
+    }
+    resolve {
+        repository {
+            repoKey = 'tubs-grails'
+            username = System.getenv("GRAILSREPO_USER")
+            password = System.getenv("GRAILSREPO_PASS")
+            maven = true
+
+        }
+    }
+}

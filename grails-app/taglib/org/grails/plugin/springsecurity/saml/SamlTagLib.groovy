@@ -3,13 +3,14 @@ package org.grails.plugin.springsecurity.saml
 import grails.plugin.springsecurity.SecurityTagLib
 import grails.util.Holders
 import grails.core.GrailsApplication
-
+import org.springframework.security.saml2.provider.service.registration.InMemoryRelyingPartyRegistrationRepository
 
 class SamlTagLib extends SecurityTagLib {
 
     static final String LOGOUT_SLUG = '/logout'
     static defaultEncodeAs = [taglib:'sec']
     GrailsApplication grailsApplication
+    InMemoryRelyingPartyRegistrationRepository relyingPartyRegistrationRepository
 
     /**
      * {@inheritDocs}
@@ -38,7 +39,11 @@ class SamlTagLib extends SecurityTagLib {
         def samlEnabled = Holders.grailsApplication.config.grails.plugin.springsecurity.saml.active
         if (samlEnabled) {
             def defaultIdp = Holders.grailsApplication.config.grails.plugin.springsecurity.saml.metadata.defaultIdp
-            url = "/saml2/authenticate/${selectIdp ?: defaultIdp}"
+            def defaultRegistration = (relyingPartyRegistrationRepository
+                .find{ it.assertingPartyDetails.entityId == defaultIdp }.registrationId
+                ?: conf.saml.metadata.defaultIdp)
+
+            url = "/saml2/authenticate/${selectIdp ?: defaultRegistration}"
         }
 
         def elementClass = generateClassAttribute(attrs)
