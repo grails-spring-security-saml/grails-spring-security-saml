@@ -293,6 +293,36 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 logoutRequestRepository = ref('logoutRequestRepository')
             }
 
+            def singleLogoutService = conf.saml.metadata.sp.defaults.singleLogoutService
+            def defaultIdp = conf.saml.metadata.defaultIdp
+            if(defaultIdp && singleLogoutService) {
+                String defaultIdpLogoutResponseUrl = null
+                try {
+                    defaultIdpLogoutResponseUrl = new URL(singleLogoutService).getPath()
+                } catch(MalformedURLException e) {
+                    println "Failed to get path from URL ${singleLogoutService}"
+                }
+                if (defaultIdpLogoutResponseUrl != null) {
+                    println "defaultIdpLogoutResponseUrl ${defaultIdpLogoutResponseUrl}"
+                    defaultIdpSaml2LogoutRequestFilter(Saml2LogoutRequestFilter, ref('relyingPartyRegistrationRepositoryResolver'),
+                            ref('logoutRequestValidator'), ref('logoutResponseResolver'), logoutHandlers) {
+                        logoutRequestMatcher = new AndRequestMatcher(
+                            new AntPathRequestMatcher(defaultIdpLogoutResponseUrl),
+                            new ParameterRequestMatcher("SAMLRequest"))
+                    }
+
+                    defaultIdpSaml2LogoutResponseFilter(Saml2LogoutResponseFilter, ref('relyingPartyRegistrationRepositoryResolver'),
+                            ref('logoutResponseValidator'), ref('logoutSuccessHandler')) {
+                        logoutRequestMatcher = new AndRequestMatcher(
+                            new AntPathRequestMatcher(defaultIdpLogoutResponseUrl),
+                            new ParameterRequestMatcher("SAMLResponse"))
+                        logoutRequestRepository = ref('logoutRequestRepository')
+                    }
+                    SpringSecurityUtils.registerFilter 'defaultIdpSaml2LogoutRequestFilter', SecurityFilterPosition.SECURITY_CONTEXT_FILTER.order + 7
+                    SpringSecurityUtils.registerFilter 'defaultIdpSaml2LogoutResponseFilter', SecurityFilterPosition.SECURITY_CONTEXT_FILTER.order + 8
+                }
+            }
+
             logoutRequestSuccessHandler(Saml2RelyingPartyInitiatedLogoutSuccessHandler, ref('logoutRequestResolver'))
 
             relyingPartyLogoutFilter(LogoutFilter, ref('logoutRequestSuccessHandler'), logoutHandlers) {
