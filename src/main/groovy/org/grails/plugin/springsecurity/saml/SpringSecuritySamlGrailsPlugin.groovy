@@ -138,7 +138,6 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             def storePass = conf.saml.keyManager.storePass.toCharArray()
             def keystore = loadKeystore(getResource(conf.saml.keyManager.storeFile), storePass)
             String signingKey = conf.saml.metadata.sp.defaults.signingKey
-            String verificationKey = conf.saml.metadata.sp.defaults.verificationKey ?: signingKey
 
             log.debug "Dynamically defining bean metadata providers... "
             def providers = conf.saml.metadata.providers
@@ -382,6 +381,9 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
         String signingKey = conf.saml.metadata.sp.defaults.signingKey
         def entryPass = conf.saml.keyManager.passwords.getProperty(signingKey).toCharArray()
         def signingEntry = (PrivateKeyEntry)keystore.getEntry(signingKey, new PasswordProtection(entryPass))
+        if(signingEntry == null) {
+            println "ERROR SIGNING KEY NOT FOUND"
+        }
         Saml2X509Credential relyingPartySigningCredential = new Saml2X509Credential(signingEntry.privateKey,
             signingEntry.certificate, Saml2X509Credential.Saml2X509CredentialType.SIGNING, Saml2X509Credential.Saml2X509CredentialType.DECRYPTION)
 

@@ -93,14 +93,7 @@ All of these properties can be put in either `application.yml` or `application.g
 | metadata.sp.file | file reference as string | "/mySpFilePath/myspfile.xml" | Reference to your SP XML File.  This can be on the classpath or in your file system. |
 | metadata.sp.defaults.local | boolean | true | True for metadata of a local service provider. False for remote identity providers. |
 | metadata.sp.defaults.entityId | String Value |'http://myapp.example.com' | Identifier for the Service Provider |
-| metadata.sp.defaults.alias | url alias | 'myalias' | Unique alias used to identify the selected local service provider based on used URL.  Will be postpended to the url in the SP File generated and given to the IDP |
-| metadata.sp.defaults.securityProfile | String Value | 'pkix' | Security profile for verification of message signatures metaiop, pkix |
 | metadata.sp.defaults.signingKey | keystore alias | 'mykey' | For local entities alias of private key used to create signatures. The default private key is used when no value is provided. For remote identity providers defines an additional public key used to verify signatures. |
-| metadata.sp.defaults.encryptionKey | keystore alias | 'mykey' | For local entities alias of private key used to encrypt data. The default private key is used when no value is provided. For remote identity providers defines an additional public key used to decrypt data. |
-| metadata.sp.defaults.tlsKey | keystore alias | 'mykey' | For local entities alias of private key used for SSL/TLS client authentication. No client authentication is used when value is not specified. For remote identity providers defines an additional public key used for trust resolution. |
-| metadata.sp.defaults.requireArtifactResolveSigned | boolean | false | Enables signing of artifact resolution requests sent to the remote identity providers. |
-| metadata.sp.defaults.requireLogoutRequestSigned | boolean | false | For local entities enables requirement of signed logout requests. For remote entities enables signing of requests sent to the IDP. |
-| metadata.sp.defaults.requireLogoutResponseSigned | boolean | false | For local entities enables requirement of signed logout responses. For remote entities enables signing of responses sent to the IDP. |
 | keyManager.storeFile | file reference string |  "/mypath/mykeystore.jks" |
 | keyManager.storePass | password string | 'changeit' | Keypass to keystore referenced in storeFile |
 | keyManager.passwords | password map [private key alias:password] | [mykey:'changeit'] | Map of aliases and passwords if private key in storeFile is password protected |
@@ -326,13 +319,7 @@ grails.plugin.springsecurity.saml.metadata.sp.file = "security/sp.xml"
 grails.plugin.springsecurity.saml.metadata.sp.defaults.local = true;
 grails.plugin.springsecurity.saml.metadata.sp.defaults.entityId = 'test'
 grails.plugin.springsecurity.saml.metadata.sp.defaults.alias = 'test';
-grails.plugin.springsecurity.saml.metadata.sp.defaults.securityProfile = 'pkix';
 grails.plugin.springsecurity.saml.metadata.sp.defaults.signingKey = 'ping';
-grails.plugin.springsecurity.saml.metadata.sp.defaults.encryptionKey = 'ping';
-grails.plugin.springsecurity.saml.metadata.sp.defaults.tlsKey = 'ping';
-grails.plugin.springsecurity.saml.metadata.sp.defaults.requireArtifactResolveSigned = false;
-grails.plugin.springsecurity.saml.metadata.sp.defaults.requireLogoutRequestSigned = false;
-grails.plugin.springsecurity.saml.metadata.sp.defaults.requireLogoutResponseSigned = false;
 grails.plugin.springsecurity.saml.keyManager.storeFile = "classpath:security/keystore.jks"
 grails.plugin.springsecurity.saml.keyManager.storePass = 'nalle123'
 grails.plugin.springsecurity.saml.keyManager.passwords = ping:'ping123'
@@ -386,9 +373,9 @@ grails:
             digestAlgorithm = 'sha256'
             userGroupAttribute = 'roles'
             autoCreate:
-               active: false  //If you want the plugin to generate users in the DB as they are authenticated via SAML
+               active: false  # If you want the plugin to generate users in the DB as they are authenticated via SAML
                key: 'id'
-               assignAuthorities: false  //If you want the plugin to assign the authorities that come from the SAML message.
+               assignAuthorities: false  # If you want the plugin to assign the authorities that come from the SAML message.
             metadata:
                defaultIdp: 'localhost:default:entityId'
                url: '/saml/metadata'
@@ -399,13 +386,7 @@ grails:
                      local: true
                      entityId: 'test'
                      alias: 'test'
-                     securityProfile: 'pkix';
                      signingKey: 'ping'
-                     encryptionKey: 'ping'
-                     tlsKey: 'ping'
-                     requireArtifactResolveSigned: false
-                     requireLogoutRequestSigned: false
-                     requireLogoutResponseSigned: false
             keyManager:
                storeFile: "classpath:security/keystore.jks"
                storePass: 'nalle123'

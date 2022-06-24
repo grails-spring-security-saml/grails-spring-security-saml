@@ -21,14 +21,7 @@ grails:
                         file: 'security/sp.xml'
                         defaults:
                             local: true
-                            alias: 'test'
-                            securityProfile: 'metaiop'
                             signingKey: 'ping'
-                            encryptionKey: 'ping'
-                            tlsKey: 'ping'
-                            requireArtifactResolveSigned: false
-                            requireLogoutRequestSigned: false
-                            requireLogoutResponseSigned: false
                 keyManager:
                     storeFile: 'classpath:security/keystore.jks'
                     storePass: 'nalle123'

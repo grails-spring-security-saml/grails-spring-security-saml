@@ -7,6 +7,7 @@ This plugin provides SAML 2.0 support for Grails 3 and 4 applications.  It was o
 * Grails 3.1.x - Use Version 3.1.x of the plugin
 * Grails 3.3.x - Use Version 3.3.x of the plugin
 * Grails 4.0.x - Use Version 4.0.2 of the plugin
+* Grails 5.x.x - Use Version 5.0.0-RC1 of the plugin
 
 ### Installation
 **Maven**
@@ -15,7 +16,7 @@ This plugin provides SAML 2.0 support for Grails 3 and 4 applications.  It was o
 <dependency>
     <groupId>org.grails.plugins</groupId>
     <artifactId>spring-security-saml</artifactId>
-    <version>4.0.2</version>
+    <version>"5.0.0-RC1"</version>
     <type>pom</type>
 </dependency>
 ```

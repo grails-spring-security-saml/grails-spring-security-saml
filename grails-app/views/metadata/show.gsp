@@ -13,13 +13,7 @@
     <ul>
         <li><strong>Entity ID:</strong> ${entityDescriptor.entityID}</li>
         <li><strong>Alias:</strong> ${extendedMetadata.alias}</li>
-        <li><strong>Security profile:</strong> ${extendedMetadata.securityProfile?:'MetaIOP'}</li>
         <li><strong>Signing key:</strong> ${extendedMetadata.signingKey}</li>
-        <li><strong>Encryption key:</strong> ${extendedMetadata.encryptionKey}</li>
-        <li><strong>SSL/TLS key:</strong> ${extendedMetadata.tlsKey}</li>
-        <li><strong>Require signed LogoutRequest:</strong> ${extendedMetadata.requireLogoutRequestSigned}</li>
-        <li><strong>Require signed LogoutResponse:</strong> ${extendedMetadata.requireLogoutResponseSigned}</li>
-        <li><strong>Require signed ArtifactResolve:</strong> ${extendedMetadata.requireArtifactResolveSigned}</li>
     </ul>
 
     <br/>
@@ -42,13 +36,8 @@
                     grails.plugin.springsecurity.saml.metadata.sp.defaults = [
                     local: true,
                     alias: 'test',
-                    securityProfile: 'metaiop',
-                    signingKey: 'ping',
-                    encryptionKey: 'ping',
-                    tlsKey: 'ping',
-                    requireArtifactResolveSigned: false,
-                    requireLogoutRequestSigned: false,
-                    requireLogoutResponseSigned: false ]
+                    signingKey: 'ping'
+                    ]
                 </code>
             </li>
         </ol>
