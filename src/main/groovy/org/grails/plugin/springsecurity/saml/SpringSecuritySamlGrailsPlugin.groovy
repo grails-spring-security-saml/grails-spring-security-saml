@@ -3,10 +3,6 @@ package org.grails.plugin.springsecurity.saml
 import grails.plugins.*
 import grails.plugin.springsecurity.SpringSecurityUtils
 import grails.plugin.springsecurity.SecurityFilterPosition
-import org.jdom.Document
-import org.jdom.input.SAXBuilder
-import org.jdom.output.XMLOutputter
-import org.jdom.output.Format
 import org.springframework.core.io.ClassPathResource;
 import grails.plugin.springsecurity.web.authentication.AjaxAwareAuthenticationFailureHandler
 import org.springframework.security.web.DefaultRedirectStrategy
@@ -303,7 +299,6 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                     println "Failed to get path from URL ${singleLogoutService}"
                 }
                 if (defaultIdpLogoutResponseUrl != null) {
-                    println "defaultIdpLogoutResponseUrl ${defaultIdpLogoutResponseUrl}"
                     defaultIdpSaml2LogoutRequestFilter(Saml2LogoutRequestFilter, ref('relyingPartyRegistrationRepositoryResolver'),
                             ref('logoutRequestValidator'), ref('logoutResponseResolver'), logoutHandlers) {
                         logoutRequestMatcher = new AndRequestMatcher(
@@ -382,6 +377,11 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
         String signingKey = conf.saml.metadata.sp.defaults.signingKey
         def entryPass = conf.saml.keyManager.passwords.getProperty(signingKey).toCharArray()
         def signingEntry = (PrivateKeyEntry)keystore.getEntry(signingKey, new PasswordProtection(entryPass))
+        if (signingEntry == null) {
+            throw new IOException("Keystore entry ${signingKey} cannot be loaded from file '${conf.saml.keyManager.storeFile}'. " +
+                 "Please check that the path configured in " +
+                 "'grails.plugin.springsecurity.saml.keyManager.storeFile' in your application.yml is correct.")
+        }
         Saml2X509Credential relyingPartySigningCredential = new Saml2X509Credential(signingEntry.privateKey,
             signingEntry.certificate, Saml2X509Credential.Saml2X509CredentialType.SIGNING, Saml2X509Credential.Saml2X509CredentialType.DECRYPTION)
 

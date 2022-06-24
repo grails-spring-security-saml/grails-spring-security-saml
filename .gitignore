@@ -134,3 +134,4 @@ release.properties
 ### Exceptions ###
 !gradle/wrapper/gradle-wrapper.jar
 !grails-wrapper.jar
+.env

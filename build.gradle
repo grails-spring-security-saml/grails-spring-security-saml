@@ -8,19 +8,23 @@ buildscript {
         classpath "org.grails:grails-gradle-plugin:$grailsGradlePluginVersion"
         classpath "com.bertramlabs.plugins:asset-pipeline-gradle:3.4.4"
         classpath "org.jfrog.buildinfo:build-info-extractor-gradle:4.28.3"
+        classpath "io.github.gradle-nexus:publish-plugin:1.0.0"
     }
 }
 
 version "5.0.0-RC1"
+//group "io.github.grails-spring-security-saml"
 group "org.grails.plugins"
 
 apply plugin:"com.jfrog.artifactory"
 apply plugin:"eclipse"
 apply plugin:"idea"
 apply plugin:"org.grails.grails-plugin"
-apply plugin:"maven-publish"
+apply plugin: 'maven-publish'
 apply plugin:"com.bertramlabs.asset-pipeline"
 apply plugin:"org.grails.grails-gsp"
+apply plugin: 'signing'
+apply plugin: "io.github.gradle-nexus.publish-plugin"
 
 repositories {
     mavenLocal()
@@ -74,12 +78,7 @@ dependencies {
 
     implementation "org.grails:grails-console"
 
-
     implementation "joda-time:joda-time:2.9.7"
-
-    implementation "org.bouncycastle:bcprov-jdk15on:1.53"
-
-    implementation "org.jdom:jdom-legacy:1.1.3"
 }
 
 bootRun {
@@ -98,6 +97,23 @@ assets {
     packagePlugin = true
 }
 
+ext."signing.keyId" = project.hasProperty("signing.keyId") ? project.getProperty('signing.keyId') : System.getenv('SIGNING_KEY_ID')
+ext."signing.password" = project.hasProperty("signing.password") ? project.getProperty('signing.password') : System.getenv('SIGNING_PASSPHRASE')
+ext."signing.secretKeyRingFile" = project.hasProperty("signing.secretKeyRingFile") ? project.getProperty('signing.secretKeyRingFile') : (System.getenv('SIGNING_SECRING')?:"${System.properties['user.home']}${File.separator}.gnupg${File.separator}secring.gpg")
+
+ext.isReleaseVersion = !version.endsWith("SNAPSHOT")
+
+afterEvaluate {
+   signing {
+       required { isReleaseVersion && gradle.taskGraph.hasTask("publish") }
+       sign publishing.publications.maven
+   }
+}
+
+tasks.withType(Sign) {
+   onlyIf { isReleaseVersion }
+}
+
 publishing {
    publications {
        maven(MavenPublication) {
@@ -110,10 +126,46 @@ publishing {
            artifact javadocJar
 
            pom {
-               name = rootProject.name
-               description = rootProject.name
-               url = "http://grails.org/plugin/$project.name"
+               name = 'Grails Spring Security SAML2.0 Plugin for Grails'
+               description = 'The Plugin basically creates a bridge from your Grails application configuration' + \
+                            'to both the Spring Security SAML service provider library and the Grails Spring Security Plugin.' + \
+                            'Instead of having to map all of the beans in your application, the plugin wires the SAML service provider' + \
+                            'beans based on your application configuration.'
+               url = 'https://github.com/grails-spring-security-saml/grails-spring-security-saml'
+               licenses {
+                   license {
+                       name = 'The Apache License, Version 2.0'
+                       url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+                   }
+               }
+               developers {
+                   developer {
+                       id = 'valentingoebel'
+                       name = 'Valentin Göbel'
+                       email = 'valentin.goebel@tu-braunschweig.de'
+                   }
+               }
+               scm {
+                   connection = 'scm:git:git://github.com/grails-spring-security-saml/grails-spring-security-saml.git'
+                   developerConnection = 'scm:git:ssh://github.com:grails-spring-security-saml/grails-spring-security-saml.git'
+                   url = 'https://github.com/grails-spring-security-saml/grails-spring-security-saml/tree/main'
+               }
            }
+       }
+   }
+}
+// https://grails.org/blog/2021-04-07-publish-grails-plugin-to-maven-central.html
+nexusPublishing {
+   repositories {
+       sonatype {
+           def ossUser = System.getenv("SONATYPE_USERNAME") ?: project.hasProperty("sonatypeOssUsername") ? project.sonatypeOssUsername : ''
+           def ossPass = System.getenv("SONATYPE_PASSWORD") ?: project.hasProperty("sonatypeOssPassword") ? project.sonatypeOssPassword : ''
+           def ossStagingProfileId = System.getenv("SONATYPE_STAGING_PROFILE_ID") ?: project.hasProperty("sonatypeOssStagingProfileId") ? project.sonatypeOssStagingProfileId : ''
+           nexusUrl = uri("https://s01.oss.sonatype.org/service/local/")
+           snapshotRepositoryUrl = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/")
+           username = ossUser
+           password = ossPass
+           stagingProfileId = ossStagingProfileId
        }
    }
 }
