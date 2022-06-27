@@ -12,9 +12,8 @@ buildscript {
     }
 }
 
-version "5.0.0-RC1"
-//group "io.github.grails-spring-security-saml"
-group "org.grails.plugins"
+version "5.0.0-RC2"
+group "io.github.grails-spring-security-saml"
 
 apply plugin:"com.jfrog.artifactory"
 apply plugin:"eclipse"
