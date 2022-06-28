@@ -65,12 +65,12 @@ class SpringSamlUserDetailsService extends GormUserDetailsService {
             logger.debug("Generated User ${user.username}")
             user = mapAdditionalAttributes(principal, user)
             if (user) {
-                def grantedAuthorities = getAuthoritiesForUser(principal, username)
+                def grantedAuthorities = getAuthoritiesForUser(principal, user)
                 if (samlAutoCreateActive) {
                     user = saveUser(user.class, user, grantedAuthorities)
                     // load any new local DB roles
                     grantedAuthorities.addAll(
-                        determineLocalRoles( username )
+                        determineLocalRoles(user)
                     )
                 }
 
@@ -126,19 +126,14 @@ class SpringSamlUserDetailsService extends GormUserDetailsService {
         user
     }
 
-    protected Collection<GrantedAuthority> getAuthoritiesForUser(Saml2AuthenticatedPrincipal principal, String username) {
+    protected Collection<GrantedAuthority> getAuthoritiesForUser(Saml2AuthenticatedPrincipal principal, user) {
         Set<GrantedAuthority> authorities = new HashSet<SimpleGrantedAuthority>()
 
-        logger.debug "Determining Authorities for $username"
+        logger.debug "Determining Authorities for $user"
         if (samlUseLocalRoles) {
-            authorities.addAll(
-                determineLocalRoles(username)
-            )
-
+            authorities.addAll(determineLocalRoles(user))
         }
-        authorities.addAll (
-            determineSamlRoles( principal )
-        )
+        authorities.addAll(determineSamlRoles(principal))
 
         logger.debug("Returning Authorities with ${authorities?.size()} Authorities added.")
         authorities
@@ -168,21 +163,18 @@ class SpringSamlUserDetailsService extends GormUserDetailsService {
         authorities
     }
 
-    private Set<SimpleGrantedAuthority> determineLocalRoles( String username ) {
+    private Set<SimpleGrantedAuthority> determineLocalRoles(user) {
         logger.debug( 'Using role assignments from local database.' )
 
         Set<SimpleGrantedAuthority> authorities = new HashSet<>()
-        def user = userClass.findByUsername( username )
-        if( user ) {
-            loadAuthorities( user, username, true ).each { authority ->
-                authorities.add(
-                    new SimpleGrantedAuthority( authority.authority )
-                )
+        if(user) {
+            loadAuthorities(user, user.username, true).each { authority ->
+                authorities.add(new SimpleGrantedAuthority(authority.authority))
             }
             logger.debug( "Added ${authorities.size()} role(s) from local database." )
         }
         else {
-            logger.debug( "User $username does not exist in local database, unable to load local roles.")
+            logger.debug( "User does not exist in local database, unable to load local roles.")
         }
 
         authorities
