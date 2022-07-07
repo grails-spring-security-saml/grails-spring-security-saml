@@ -191,7 +191,16 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 userCache = ref('userCache')
             }
 
-            relyingPartyRegistrationRepository(InMemoryRelyingPartyRegistrationRepository, registrations)
+            if (registrations.isEmpty()) {
+                if (!conf.saml.metadata.hideProviderWarning) {
+                    throw new IllegalArgumentException("No providers have been defined in the providers section (registrations), please define " +
+                        "grails.plugin.springsecurity.saml.metadata.providers.{registrationId} = 'security/idp.xml' " +
+                        "for at least one IDP or define a custom relyingPartyRegistrationRepository yourself " +
+                        "and set grails.plugin.springsecurity.saml.metadata.hideProviderWarning = true to skip this warning.")
+                }
+            } else {
+                relyingPartyRegistrationRepository(InMemoryRelyingPartyRegistrationRepository, registrations)
+            }
 
             relyingPartyRegistrationRepositoryResolver(DefaultRelyingPartyRegistrationResolver, ref('relyingPartyRegistrationRepository'))
 
@@ -206,7 +215,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 if (loginProcessingUrl != null) {
                     println "Activating default registration ${conf.saml.metadata.defaultIdp}"
                     defaultRegistrationId = (registrations
-                        .find{ it.assertingPartyDetails.entityId == conf.saml.metadata.defaultIdp }.registrationId
+                        .find{ it.assertingPartyDetails.entityId == conf.saml.metadata.defaultIdp }?.registrationId
                         ?: conf.saml.metadata.defaultIdp)
 
                     // force the use of defaultIdp registration
@@ -239,7 +248,15 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
 
             openSamlMetadataResolver(OpenSamlMetadataResolver)
 
-            saml2MetadataFilter(Saml2MetadataFilter, ref('relyingPartyRegistrationRepositoryResolver'), ref('openSamlMetadataResolver'))
+            def metadataUrl = conf.saml.metadata.url
+            saml2MetadataFilter(Saml2MetadataFilter, ref('relyingPartyRegistrationRepositoryResolver'), ref('openSamlMetadataResolver')) {
+                if (metadataUrl) {
+                    if (!metadataUrl.contains("{registrationId}")) {
+                        throw new IllegalArgumentException("grails.plugin.springsecurity.saml.metadata.url must contain {registrationId}")
+                    }
+                    requestMatcher = new AntPathRequestMatcher(metadataUrl)
+                }
+            }
 
             authenticationRequestRepository(HttpSessionSaml2AuthenticationRequestRepository)
 
@@ -375,8 +392,18 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
         String relyingSingleLogoutServiceLocation = conf.saml.metadata.sp.defaults.singleLogoutService ?: "{baseUrl}/logout/saml2/sso/{registrationId}"
 
         String signingKey = conf.saml.metadata.sp.defaults.signingKey
-        def entryPass = conf.saml.keyManager.passwords.getProperty(signingKey).toCharArray()
-        def signingEntry = (PrivateKeyEntry)keystore.getEntry(signingKey, new PasswordProtection(entryPass))
+        def signingEntry
+
+        if (conf.saml.keyManager.passwords) {
+            def entryPass = conf.saml.keyManager.passwords[signingKey]
+            if(entryPass) {
+                def passwordProtection = new PasswordProtection(entryPass.toCharArray())
+                signingEntry = (PrivateKeyEntry)keystore.getEntry(signingKey, passwordProtection)
+            } else {
+                throw new IOException("Password for keystore entry ${signingKey} cannot be found at " +
+                    "'grails.plugin.springsecurity.saml.keyManager.passwords.${signingKey}' in your application.yml.")
+            }
+        }
         if (signingEntry == null) {
             throw new IOException("Keystore entry ${signingKey} cannot be loaded from file '${conf.saml.keyManager.storeFile}'. " +
                  "Please check that the path configured in " +

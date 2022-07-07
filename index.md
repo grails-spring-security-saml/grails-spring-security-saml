@@ -23,7 +23,7 @@ grails:
                         requireLogoutResponseSigned:
 ```
 
-Spring Security Core has now the concept of a RelyingPartyRegistrationReposity. A RelyingPartyRegistration must be created for each Service Provider and Identity Provider pair and each pair is uniquely identified by a registrationId which is identical to the alias specified in the providers property. This plugin automatically generates RelyingPartyregistrations for each IDP based on the provided XML IDP Metadata.
+Spring Security Core has now the concept of a RelyingPartyRegistrationReposity. A RelyingPartyRegistration must be created for each Service Provider and Identity Provider pair and each pair is uniquely identified by a registrationId which is identical to the registrationId specified in the providers property. This plugin automatically generates RelyingPartyregistrations for each IDP based on the provided XML IDP Metadata.
 
 The entityID of the Service Provider is generated based on the pattern specified in `grails.plugins.springsecurity.saml.saml.metadata.sp.defaults.entityID` which is `{baseUrl}/saml2/service-provider-metadata/{registrationId}` by default.
 
@@ -44,7 +44,6 @@ grails:
             metadata:
                 defaults:
                     entityID: {baseUrl}
-                    alias: {baseUrl}
                     assertionConsumerService: {baseUrl}/saml/SSO
                     singleLogoutService: {baseUrl}/saml/SingleLogout
 ```
@@ -136,16 +135,15 @@ All of these properties can be put in either `application.yml` or `application.g
 | autoCreate.active | boolean | false | If you want the plugin to generate users in the DB as they are authenticated via SAML
 | autoCreate.key | domain class unique identifier | 'id' | if autoCreate active is true then this is the unique id field of the db table |
 | autoCreate.assignAuthorities | boolean | false | If you want the plugin to insert the authorities that come from the SAML message into the UserRole Table. |
-| metadata.providers | Map [idp alias: idp file reference] | [ping:"/pathtoIdpFile/myIdp.xml"] | Map of idp providers. Contain an alias and reference to the idp xml file |
+| metadata.providers | Map [registrationId: idp file reference] | [ping:"/pathtoIdpFile/myIdp.xml"] | Map of idp providers. Contain a registration id and reference to the idp xml file |
 | metadata.defaultIdp | String | 'https://idp.example.org/idp/shibboleth' | the entityId of the default Idp from the ones listed in the metadata.provider map. If no entityId is given an IDP will be picked from the list automatically. |
 | metadata.url | relative url | '/saml/metadata' | url used to retrieve the SP metadata for your app to send to the IDP |
 | metadata.sp.file | file reference as string | "/mySpFilePath/myspfile.xml" | Reference to your SP XML File.  This can be on the classpath or in your file system. |
 | metadata.sp.defaults.entityId | String Value |'http://myapp.example.com' | Identifier for the Service Provider |
-| metadata.sp.defaults.alias | url alias | 'myalias' | Unique alias used to identify the selected local service provider based on used URL.  Will be postpended to the url in the SP File generated and given to the IDP |
 | metadata.sp.defaults.signingKey | keystore alias | 'mykey' | For local entities alias of private key used to create signatures. The default private key is used when no value is provided. For remote identity providers defines an additional public key used to verify signatures. |
 | keyManager.storeFile | file reference string |  "/mypath/mykeystore.jks" |
 | keyManager.storePass | password string | 'changeit' | Keypass to keystore referenced in storeFile |
-| keyManager.passwords | password map [private key alias:password] | [mykey:'changeit'] | Map of aliases and passwords if private key in storeFile is password protected |
+| keyManager.passwords | password map [private key registrationId:password] | [mykey:'changeit'] | Map of registration ids and passwords if private key in storeFile is password protected |
 | keyManager.defaultKey | keystore alias | 'mykey' | Default Key Alias in keystore referenced in storeFile |
 
 #### Example Configuration
@@ -288,7 +286,6 @@ grails:
                   file: "security/sp.xml"
                   defaults:
                      entityId: 'test'
-                     alias: 'test'
                      signingKey: 'ping'
             keyManager:
                storeFile: "classpath:security/keystore.jks"

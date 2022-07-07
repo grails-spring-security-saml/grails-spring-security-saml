@@ -82,14 +82,13 @@ grails:
                        assignAuthorities: true
                   metadata:
                        defaultIdp: 'localhost:default:entityId'
-                       url: '/saml/metadata'
                        providers:
                            ping: 'security/idp-local.xml'
                        sp:
                            file: 'security/sp.xml'
                            defaults:
-                                alias: 'test'
-                                signingKey: 'ping'
+                               entityID: 'test'
+                               signingKey: 'ping'
                   keyManager:
                         storeFile: 'classpath:security/keystore.jks'
                         storePass: 'nalle123'
