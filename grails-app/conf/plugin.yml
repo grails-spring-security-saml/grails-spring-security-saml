@@ -15,7 +15,6 @@ grails:
                 metadata:
                     timeout: 5000
                     defaultIdp: ''
-                    url: '/saml/metadata'
                     providers: {}
                     sp:
                         file: 'security/sp.xml'
