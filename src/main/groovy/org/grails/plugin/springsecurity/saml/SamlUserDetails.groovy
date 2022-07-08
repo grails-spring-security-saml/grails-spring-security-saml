@@ -14,7 +14,7 @@ import org.springframework.util.Assert
 @GrailsCompileStatic
 class SamlUserDetails extends GrailsUser implements Saml2AuthenticatedPrincipal, Serializable  {
 
-    private final String name
+    private String name // necessary for single logout
 
     private Map<String, List<Object>> attributes
 
@@ -30,7 +30,6 @@ class SamlUserDetails extends GrailsUser implements Saml2AuthenticatedPrincipal,
 
         Assert.notNull(username, "username cannot be null");
         Assert.notNull(attributes, "attributes cannot be null");
-        this.name = username;
         this.attributes = attributes;
         this.registrationId = null;
     }
@@ -45,6 +44,10 @@ class SamlUserDetails extends GrailsUser implements Saml2AuthenticatedPrincipal,
             return attribute[0]
         }
         return metaClass.getProperty(this, name)
+    }
+
+    public String setName(String name) {
+        this.name = name;
     }
 
     @Override
