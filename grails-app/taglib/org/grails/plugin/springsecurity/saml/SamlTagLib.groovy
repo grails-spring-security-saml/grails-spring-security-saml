@@ -52,7 +52,7 @@ class SamlTagLib extends SecurityTagLib {
         def elementClass = generateClassAttribute(attrs)
         def elementId = generateIdAttribute(attrs)
 
-        out << "<a href='${url}'${elementId}${elementClass}>${body()}</a>"
+        out << "<a href='${contextPath}${url}'${elementId}${elementClass}>${body()}</a>"
     }
 
     /**
