@@ -334,10 +334,9 @@ grails:
 class User implements Serializable {
 
     // ...
-
+    
+    String username
     String email
-    String lastname
-
     String fullname
 
     // ...
