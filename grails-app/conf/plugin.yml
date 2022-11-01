@@ -7,7 +7,6 @@ grails:
                 afterLoginUrl: '/'
                 afterLogoutUrl: '/'
                 userGroupAttribute: 'memberOf'
-                responseSkew: 60
                 autoCreate:
                     active: false
                     key: 'username'
@@ -26,4 +25,3 @@ grails:
                     storePass: 'nalle123'
                     passwords:
                         ping: 'ping123'
-                    defaultKey: 'ping'

@@ -35,4 +35,4 @@ repositories {
 }
 ```
 
-See the [documentation page](https://jeffwils.github.io/grails-spring-security-saml/) for more information.
+See the [documentation page](https://jeffwils.github.io/grails-spring-security-saml/) and index.md (for Grails 5) for more information.

@@ -11,6 +11,7 @@ grails:
    plugins:
       springsecurity:
           saml:
+            responseSkew:
             metadata:
                 sp:
                     defaults:
@@ -125,9 +126,6 @@ All of these properties can be put in either `application.yml` or `application.g
 | active | boolean | true | States whether or not SAML is active |
 | afterLoginUrl | url string | '/' | Redirection Url in your application upon successful login from the IDP |
 | afterLogoutUrl | url string | '/' | Redirection Url in your application upon successful logout from the IDP |
-| responseSkew | numeric | 60 | Time in seconds to account for differences in clock time between SP and IDP if their times should differ when attempting to compare request and assertion time index values  |
-| signatureAlgorithm | String Value | 'rsa-sha256' | Accepted Values are From org.opensaml.xml.signature.SignatureConstants |
-| digestAlgorithm | String Value | 'sha256' | Accepted Values are From org.opensaml.xml.encryption.EncryptionConstants |
 | userAttributeMappings | Map | [username:'funkyUserNameFromIDP'] | Allows Custom Mapping if both Application and IDP Attribute Names cannot be changed. |
 | userGroupAttribute | String Value | 'memberOf' | Corresponds to the Role Designator in the SAML Assertion from the IDP |
 | userGroupToRoleMapping | Map [Spring Security Role: Saml Assertion Role] | [ROLE_MY_APP_ROLE: 'CN=MYSAMLGROUP, OU=MyAppGroups, DC=myldap, DC=example, DC=com'] | This maps the Spring Security Roles in your application to the roles from the SAML Assertion.  Only roles in this Map will be resolved. |
@@ -137,14 +135,12 @@ All of these properties can be put in either `application.yml` or `application.g
 | autoCreate.assignAuthorities | boolean | false | If you want the plugin to insert the authorities that come from the SAML message into the UserRole Table. |
 | metadata.providers | Map [registrationId: idp file reference] | [ping:"/pathtoIdpFile/myIdp.xml"] | Map of idp providers. Contain a registration id and reference to the idp xml file |
 | metadata.defaultIdp | String | 'https://idp.example.org/idp/shibboleth' | the entityId of the default Idp from the ones listed in the metadata.provider map. If no entityId is given an IDP will be picked from the list automatically. |
-| metadata.url | relative url | '/saml/metadata' | url used to retrieve the SP metadata for your app to send to the IDP |
-| metadata.sp.file | file reference as string | "/mySpFilePath/myspfile.xml" | Reference to your SP XML File.  This can be on the classpath or in your file system. |
+| metadata.url | relative url | '/saml/metadata/{registrationId}' | url used to retrieve the SP metadata for your app to send to the IDP |
 | metadata.sp.defaults.entityId | String Value |'http://myapp.example.com' | Identifier for the Service Provider |
 | metadata.sp.defaults.signingKey | keystore alias | 'mykey' | For local entities alias of private key used to create signatures. The default private key is used when no value is provided. For remote identity providers defines an additional public key used to verify signatures. |
 | keyManager.storeFile | file reference string |  "/mypath/mykeystore.jks" |
 | keyManager.storePass | password string | 'changeit' | Keypass to keystore referenced in storeFile |
 | keyManager.passwords | password map [private key registrationId:password] | [mykey:'changeit'] | Map of registration ids and passwords if private key in storeFile is password protected |
-| keyManager.defaultKey | keystore alias | 'mykey' | Default Key Alias in keystore referenced in storeFile |
 
 #### Example Configuration
 
@@ -192,7 +188,7 @@ configurations {
 dependencies {
     ...
     implementation 'org.grails.plugins:spring-security-core:5.0.0-RC1'
-    implementation 'io.github.grails-spring-security-saml:spring-security-saml:5.0.0-RC2'
+    implementation 'io.github.grails-spring-security-saml:spring-security-saml:5.0.0-RC3'
     ...
 }
 ```
@@ -233,63 +229,69 @@ application.yml
 
 ```
 grails:
-   plugin:
-      springsecurity:
-         userLookup:
-            userDomainClassName: 'com.jeffwils.User'
-            authorityJoinClassName: 'com.jeffwils.UserRole'
-         authority:
-            className: 'com.jeffwils.Role'
-         requestMap:
-            className: 'com.jeffwils.UserRole'
-         securityConfigType: 'Requestmap'
-         controllerAnnotations:
-            staticRules: [
-                            [pattern: '/',               access: ['permitAll']],
-                            [pattern: '/error',          access: ['permitAll']],
-                            [pattern: '/index',          access: ['permitAll']],
-                            [pattern: '/index.gsp',      access: ['permitAll']],
-                            [pattern: '/shutdown',       access: ['permitAll']],
-                            [pattern: '/assets/**',      access: ['permitAll']],
-                            [pattern: '/**/js/**',       access: ['permitAll']],
-                            [pattern: '/**/css/**',      access: ['permitAll']],
-                            [pattern: '/**/images/**',   access: ['permitAll']],
-                            [pattern: '/**/favicon.ico', access: ['permitAll']]
-                          ]
-         filterChain:
-            chainMap: [
+    plugin:
+        springsecurity:
+            userLookup:
+                userDomainClassName: 'com.jeffwils.User'
+                authorityJoinClassName: 'com.jeffwils.UserRole'
+            authority:
+                className: 'com.jeffwils.Role'
+            requestMap:
+                className: 'com.jeffwils.UserRole'
+            securityConfigType: 'Requestmap'
+            controllerAnnotations:
+                staticRules: [
+                                [pattern: '/',               access: ['permitAll']],
+                                [pattern: '/error',          access: ['permitAll']],
+                                [pattern: '/index',          access: ['permitAll']],
+                                [pattern: '/index.gsp',      access: ['permitAll']],
+                                [pattern: '/shutdown',       access: ['permitAll']],
+                                [pattern: '/assets/**',      access: ['permitAll']],
+                                [pattern: '/**/js/**',       access: ['permitAll']],
+                                [pattern: '/**/css/**',      access: ['permitAll']],
+                                [pattern: '/**/images/**',   access: ['permitAll']],
+                                [pattern: '/**/favicon.ico', access: ['permitAll']]
+                             ]
+            filterChain:
+                chainMap: [
                             [pattern: '/assets/**',      filters: 'none'],
                             [pattern: '/**/js/**',       filters: 'none'],
                             [pattern: '/**/css/**',      filters: 'none'],
                             [pattern: '/**/images/**',   filters: 'none'],
                             [pattern: '/**/favicon.ico', filters: 'none'],
                             [pattern: '/**',             filters: 'JOINED_FILTERS']
-                      ]
+                          ]
          providerNames: ['samlAuthenticationProvider', 'daoAuthenticationProvider', 'anonymousAuthenticationProvider']
          saml:
             active: true
             afterLoginUrl: '/'
             afterLogoutUrl: '/'
-            responseSkew: 300
-            signatureAlgorithm = 'rsa-sha256'
-            digestAlgorithm = 'sha256'
             userGroupAttribute = 'roles'
             autoCreate:
-               active: false  //If you want the plugin to generate users in the DB as they are authenticated via SAML
-               key: 'id'
-               assignAuthorities: false  //If you want the plugin to assign the authorities that come from the SAML message.
+                active: false # If you want the plugin to generate users in the DB as they are authenticated via SAML
+                key: 'id'
+                assignAuthorities: false # If you want the plugin to assign the authorities that come from the SAML message.
             metadata:
-               defaultIdp: 'localhost:default:entityId'
-               url: '/saml/metadata'
-               providers: [ping:'security/idp-local.xml']
-               sp:
-                  file: "security/sp.xml"
-                  defaults:
-                     entityId: 'test'
-                     signingKey: 'ping'
+                defaultIdp: 'localhost:default:entityId'
+                # for those who are upgrading from grails 4
+                # assertionConsumerService: {baseUrl}/saml/SSO
+                # singleLogoutService: {baseUrl}/saml/SingleLogout
+                url: '/saml/metadata'
+                providers:
+                    ping: 'security/idp-local.xml'
+                sp:
+                    defaults:
+                        entityId: 'test'
+                        signingKey: 'ping'
             keyManager:
-               storeFile: "classpath:security/keystore.jks"
-               storePass: 'nalle123'
-               passwords: ping:'ping123'
-               defaultKey: 'ping'
+                storeFile: "classpath:security/keystore.jks"
+                storePass: 'nalle123'
+                passwords:
+                    ping: 'ping123'
+```
+
+# Keystore generation:
+
+```
+openssl pkcs12 -export -in cert-sso.pem -inkey server-key-sso.pem -name <signingKey> -out grails-app/conf/security/keystore.jks
 ```
