@@ -7,7 +7,7 @@ This plugin provides SAML 2.0 support for Grails 4 and 5 applications. It was or
 * Grails 3.1.x - Use Version 3.1.x of the plugin
 * Grails 3.3.x - Use Version 3.3.x of the plugin
 * Grails 4.0.x - Use Version 4.0.2 of the plugin
-* Grails 5.1.x - Use Version 5.0.0-RC2 of the plugin
+* Grails 5.1.x - Use Version 5.0.0-RC3 of the plugin
 
 ### Installation
 Grails 4.0.0:
@@ -19,7 +19,7 @@ compile 'org.grails.plugins:spring-security-saml:4.0.2'
 Grails 5.0.0:
 
 ```gradle
-implementation 'io.github.grails-spring-security-saml:spring-security-saml:5.0.0-RC2'
+implementation 'io.github.grails-spring-security-saml:spring-security-saml:5.0.0-RC3'
 ```
 
 
