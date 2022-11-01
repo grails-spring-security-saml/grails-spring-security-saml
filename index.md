@@ -24,7 +24,7 @@ grails:
                         requireLogoutResponseSigned:
 ```
 
-Spring Security Core has now the concept of a RelyingPartyRegistrationReposity. A RelyingPartyRegistration must be created for each Service Provider and Identity Provider pair and each pair is uniquely identified by a registrationId which is identical to the registrationId specified in the providers property. This plugin automatically generates RelyingPartyregistrations for each IDP based on the provided XML IDP Metadata.
+Spring Security Core now has the concept of a RelyingPartyRegistrationReposity. A RelyingPartyRegistration must be created for each Service Provider and Identity Provider pair and each pair is uniquely identified by a registrationId which is identical to the registrationId specified in the providers property. This plugin automatically generates RelyingPartyRegistrations for each IDP based on the provided XML IDP Metadata.
 
 The entityID of the Service Provider is generated based on the pattern specified in `grails.plugins.springsecurity.saml.saml.metadata.sp.defaults.entityID` which is `{baseUrl}/saml2/service-provider-metadata/{registrationId}` by default.
 
@@ -212,7 +212,8 @@ grails.plugin.springsecurity.controllerAnnotations.staticRules = [
 	[pattern: '/**/js/**',       access: ['permitAll']],
 	[pattern: '/**/css/**',      access: ['permitAll']],
 	[pattern: '/**/images/**',   access: ['permitAll']],
-	[pattern: '/**/favicon.ico', access: ['permitAll']]
+	[pattern: '/**/favicon.ico', access: ['permitAll']],
+    [pattern: '/saml2/**',       access: ['permitAll']]
 ]
 
 grails.plugin.springsecurity.filterChain.chainMap = [
@@ -231,6 +232,9 @@ application.yml
 grails:
     plugin:
         springsecurity:
+            # optional: automatic redirect to SSO login
+            # auth:
+            #    loginFormUrl: '/saml2/authenticate/<insert_registrationId>'
             userLookup:
                 userDomainClassName: 'com.jeffwils.User'
                 authorityJoinClassName: 'com.jeffwils.UserRole'
@@ -294,4 +298,65 @@ grails:
 
 ```
 openssl pkcs12 -export -in cert-sso.pem -inkey server-key-sso.pem -name <signingKey> -out grails-app/conf/security/keystore.jks
+```
+
+# Detect if logged in via SSO
+
+```
+Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+if (authentication instanceof Saml2Authentication) {
+    url = "/logout/saml2" // change URL to global logout via saml2
+}
+```
+
+# Login/Logout links with defaultIdp
+
+```
+<sec:loginLink class="nav-link"><g:message code="index.login.label"/></sec:loginLink>
+
+<sec:logoutLink class="nav-link"><g:message code="index.logout.label"/></sec:logoutLink>
+```
+
+# Access SAML attributes via principal
+
+```
+grails:
+    plugin:
+        springsecurity:
+            saml:
+                userAttributeMappings:
+                    username: 'urn:oid: ...'
+                    email: 'urn:oid: ...'
+                    fullname: 'urn:oid: ...'
+```
+
+```
+class User implements Serializable {
+
+    // ...
+
+    String email
+    String lastname
+
+    String fullname
+
+    // ...
+}
+```
+
+```
+class ProposalController {
+
+    // ...
+
+    def propose(Proposal proposal) {
+        proposal.username = principal.username
+        proposal.submitterEmail = principal.email
+        proposal.submitterName = principal.fullname
+        
+        // ...
+    }
+
+    // ...
+}
 ```
