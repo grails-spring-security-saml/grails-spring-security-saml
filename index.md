@@ -273,15 +273,15 @@ grails:
                 assignAuthorities: false # If you want the plugin to assign the authorities that come from the SAML message.
             metadata:
                 defaultIdp: 'localhost:default:entityId'
-                # for those who are upgrading from grails 4
-                # assertionConsumerService: {baseUrl}/saml/SSO
-                # singleLogoutService: {baseUrl}/saml/SingleLogout
                 url: '/saml/metadata'
                 providers:
                     ping: 'security/idp-local.xml'
                 sp:
                     defaults:
-                        entityId: 'test'
+                        entityID: 'test'
+                        # for those who are upgrading from grails 4
+                        # assertionConsumerService: {baseUrl}/saml/SSO
+                        # singleLogoutService: {baseUrl}/saml/SingleLogout
                         signingKey: 'ping'
             keyManager:
                 storeFile: "classpath:security/keystore.jks"
