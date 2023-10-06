@@ -12,7 +12,7 @@ buildscript {
     }
 }
 
-version "5.0.0-RC3"
+version "5.1.0"
 group "io.github.grails-spring-security-saml"
 
 apply plugin:"com.jfrog.artifactory"
@@ -167,4 +167,29 @@ nexusPublishing {
            stagingProfileId = ossStagingProfileId
        }
    }
+}
+
+artifactory {
+    contextUrl = "https://grailsrepo.rz.tu-bs.de/artifactory/"
+    publish {
+        repository {
+            repoKey = 'tubs-grails'
+            username = System.getenv("GRAILSREPO_USER")
+            password = System.getenv("GRAILSREPO_PASS")
+            maven = true
+
+        }
+        defaults {
+            publications('maven')
+        }
+    }
+    resolve {
+        repository {
+            repoKey = 'tubs-grails'
+            username = System.getenv("GRAILSREPO_USER")
+            password = System.getenv("GRAILSREPO_PASS")
+            maven = true
+
+        }
+    }
 }

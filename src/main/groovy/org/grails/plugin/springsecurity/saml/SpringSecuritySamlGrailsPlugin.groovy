@@ -1,78 +1,46 @@
 package org.grails.plugin.springsecurity.saml
 
-import grails.plugins.*
-import grails.plugin.springsecurity.SpringSecurityUtils
 import grails.plugin.springsecurity.SecurityFilterPosition
-import org.springframework.core.io.ClassPathResource;
+import grails.plugin.springsecurity.SpringSecurityUtils
 import grails.plugin.springsecurity.web.authentication.AjaxAwareAuthenticationFailureHandler
+import grails.plugins.Plugin
+import org.cryptacular.adapter.WrappedRSAPrivateCrtKey
+import org.cryptacular.adapter.WrappedRSAPublicKey
+import org.cryptacular.util.CertUtil
+import org.cryptacular.util.KeyPairUtil
+import org.springframework.core.io.Resource
+import org.springframework.security.core.Authentication
+import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.security.saml2.core.Saml2X509Credential
+import org.springframework.security.saml2.provider.service.authentication.OpenSamlAuthenticationProvider
+import org.springframework.security.saml2.provider.service.authentication.OpenSamlAuthenticationRequestFactory
+import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal
+import org.springframework.security.saml2.provider.service.authentication.logout.OpenSamlLogoutRequestValidator
+import org.springframework.security.saml2.provider.service.authentication.logout.OpenSamlLogoutResponseValidator
+import org.springframework.security.saml2.provider.service.metadata.OpenSamlMetadataResolver
+import org.springframework.security.saml2.provider.service.registration.InMemoryRelyingPartyRegistrationRepository
+import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistrations
+import org.springframework.security.saml2.provider.service.servlet.filter.Saml2WebSsoAuthenticationFilter
+import org.springframework.security.saml2.provider.service.servlet.filter.Saml2WebSsoAuthenticationRequestFilter
+import org.springframework.security.saml2.provider.service.web.*
+import org.springframework.security.saml2.provider.service.web.authentication.logout.*
 import org.springframework.security.web.DefaultRedirectStrategy
 import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler
-import org.springframework.security.web.authentication.logout.SimpleUrlLogoutSuccessHandler
-import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler
+import org.springframework.security.web.authentication.logout.*
 import org.springframework.security.web.authentication.session.SessionFixationProtectionStrategy
-
-import java.util.LinkedHashMap;
-import java.util.Map;
-import javax.servlet.Filter;
-import org.opensaml.core.Version;
-import org.springframework.beans.factory.NoSuchBeanDefinitionException;
-import org.springframework.context.ApplicationContext;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.AuthenticationProvider;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.saml2.provider.service.authentication.AbstractSaml2AuthenticationRequest;
-import org.springframework.security.saml2.provider.service.authentication.OpenSamlAuthenticationProvider;
-import org.springframework.security.saml2.provider.service.authentication.OpenSamlAuthenticationRequestFactory;
-import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticationRequestFactory;
-import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration;
-import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistrationRepository;
-import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistrations
-
-import org.springframework.security.saml2.provider.service.servlet.filter.Saml2WebSsoAuthenticationFilter;
-import org.springframework.security.saml2.provider.service.servlet.filter.Saml2WebSsoAuthenticationRequestFilter;
-import org.springframework.security.saml2.provider.service.web.DefaultRelyingPartyRegistrationResolver;
-import org.springframework.security.saml2.provider.service.web.DefaultSaml2AuthenticationRequestContextResolver;
-import org.springframework.security.saml2.provider.service.web.HttpSessionSaml2AuthenticationRequestRepository;
-import org.springframework.security.saml2.provider.service.web.RelyingPartyRegistrationResolver;
-import org.springframework.security.saml2.provider.service.web.Saml2AuthenticationRequestContextResolver;
-import org.springframework.security.saml2.provider.service.web.Saml2AuthenticationRequestRepository;
-import org.springframework.security.saml2.provider.service.web.Saml2AuthenticationTokenConverter;
-import org.springframework.security.web.authentication.AuthenticationConverter;
-import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
-import org.springframework.security.web.authentication.ui.DefaultLoginPageGeneratingFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
-import org.springframework.security.web.util.matcher.RequestMatcher;
-import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
-import org.springframework.security.saml2.provider.service.registration.InMemoryRelyingPartyRegistrationRepository
-import org.springframework.security.saml2.core.Saml2X509Credential
-import java.security.KeyStore
-import java.security.KeyStore.PrivateKeyEntry
-import java.security.KeyStore.PasswordProtection
-import org.opensaml.security.x509.X509Support
-import java.security.cert.X509Certificate
-import org.springframework.security.saml2.provider.service.metadata.OpenSamlMetadataResolver
-import org.springframework.security.saml2.provider.service.web.Saml2MetadataFilter
-
-import org.springframework.security.web.authentication.logout.LogoutHandler
 import org.springframework.security.web.util.matcher.AndRequestMatcher
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher
+import org.springframework.security.web.util.matcher.RequestMatcher
+
 import javax.servlet.http.HttpServletRequest
+import java.security.KeyStore
+import java.security.KeyStore.PasswordProtection
+import java.security.KeyStore.PrivateKeyEntry
+import java.security.PrivateKey
+import java.security.cert.X509Certificate
+import java.security.interfaces.RSAPrivateKey
+import java.security.interfaces.RSAPublicKey
 import java.util.function.Predicate
-import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal
-import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.security.saml2.provider.service.authentication.logout.OpenSamlLogoutResponseValidator;
-import org.springframework.security.saml2.provider.service.authentication.logout.OpenSamlLogoutRequestValidator;
-import org.springframework.security.saml2.provider.service.web.authentication.logout.OpenSaml3LogoutRequestResolver;
-import org.springframework.security.saml2.provider.service.web.authentication.logout.HttpSessionLogoutRequestRepository;
-import org.springframework.security.saml2.provider.service.web.authentication.logout.OpenSaml3LogoutResponseResolver;
-import org.springframework.security.saml2.provider.service.web.authentication.logout.Saml2LogoutRequestFilter;
-import org.springframework.security.saml2.provider.service.web.authentication.logout.Saml2LogoutResponseFilter;
-import org.springframework.security.saml2.provider.service.web.authentication.logout.Saml2RelyingPartyInitiatedLogoutSuccessHandler;
-import org.springframework.security.web.authentication.logout.LogoutFilter;
-import org.springframework.security.web.authentication.logout.LogoutSuccessEventPublishingLogoutHandler;
-import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
-import org.springframework.security.web.util.matcher.RequestMatcher;
-import java.net.MalformedURLException
 
 class SpringSecuritySamlGrailsPlugin extends Plugin {
 
@@ -132,7 +100,10 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             }
 
             def storePass = conf.saml.keyManager.storePass.toCharArray()
-            def keystore = loadKeystore(getResource(conf.saml.keyManager.storeFile), storePass)
+            def keystore = null
+            if (conf.saml.keyManager.storeFile) {
+                keystore = loadKeystore(getResource(conf.saml.keyManager.storeFile), storePass)
+            }
             String signingKey = conf.saml.metadata.sp.defaults.signingKey
             String verificationKey = conf.saml.metadata.sp.defaults.verificationKey ?: signingKey
 
@@ -385,6 +356,18 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
         return keystore
     }
 
+    X509Certificate readCertificate(Resource resource) throws Exception {
+        return resource.getInputStream().withCloseable {is ->
+            return CertUtil.readCertificate(is)
+        }
+    }
+
+    RSAPrivateKey readPrivateKey(Resource resource) throws Exception {
+        return resource.getInputStream().withCloseable {is ->
+            return KeyPairUtil.readPrivateKey(is)
+        }
+    }
+
     def registrationFromMetadata(conf, registrationId, metadataLocation, keystore) {
 
         String relyingPartyEntityId = conf.saml.metadata.sp.defaults.entityID ?: "{baseUrl}/saml2/service-provider-metadata/{registrationId}"
@@ -392,25 +375,55 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
         String relyingSingleLogoutServiceLocation = conf.saml.metadata.sp.defaults.singleLogoutService ?: "{baseUrl}/logout/saml2/sso/{registrationId}"
 
         String signingKey = conf.saml.metadata.sp.defaults.signingKey
-        def signingEntry
 
-        if (conf.saml.keyManager.passwords) {
-            def entryPass = conf.saml.keyManager.passwords[signingKey]
-            if(entryPass) {
-                def passwordProtection = new PasswordProtection(entryPass.toCharArray())
-                signingEntry = (PrivateKeyEntry)keystore.getEntry(signingKey, passwordProtection)
-            } else {
-                throw new IOException("Password for keystore entry ${signingKey} cannot be found at " +
-                    "'grails.plugin.springsecurity.saml.keyManager.passwords.${signingKey}' in your application.yml.")
+        Saml2X509Credential relyingPartySigningCredential
+
+        if (conf.saml.keyManager.storeFile && keystore != null) {
+            PrivateKeyEntry signingEntry
+            if (conf.saml.keyManager.passwords) {
+                def entryPass = conf.saml.keyManager.passwords[signingKey]
+                if (entryPass) {
+                    def passwordProtection = new PasswordProtection(entryPass.toCharArray())
+                    signingEntry = (PrivateKeyEntry)keystore.getEntry(signingKey, passwordProtection)
+                } else {
+                    throw new IOException("Password for keystore entry ${signingKey} cannot be found at " +
+                            "'grails.plugin.springsecurity.saml.keyManager.passwords.${signingKey}' in your application.yml.")
+                }
             }
+            if (signingEntry == null) {
+                throw new IOException("Keystore entry ${signingKey} cannot be loaded from file '${conf.saml.keyManager.storeFile}'. " +
+                        "Please check that the path configured in " +
+                        "'grails.plugin.springsecurity.saml.keyManager.storeFile' in your application.yml is correct.")
+            }
+
+            relyingPartySigningCredential = new Saml2X509Credential(signingEntry.privateKey,
+                    signingEntry.certificate, Saml2X509Credential.Saml2X509CredentialType.SIGNING, Saml2X509Credential.Saml2X509CredentialType.DECRYPTION)
+        } else if (conf.saml.keyManager.privateKeyFile || conf.saml.keyManager.certificateFile) {
+
+            Resource certificateFile = applicationContext.getResource(conf.saml.keyManager.certificateFile)
+            Resource privateKeyFile = applicationContext.getResource(conf.saml.keyManager.privateKeyFile)
+
+            if (!certificateFile.exists()) {
+                throw new FileNotFoundException("Public key file '${conf.saml.keyManager.certificateFile}' configured " +
+                        "in 'grails.plugin.springsecurity.saml.keyManager.certificateFile' could not be found.")
+            }
+            if (!privateKeyFile.exists()) {
+                throw new FileNotFoundException("Private key file '${conf.saml.keyManager.privateKeyFile}' configured " +
+                        "in 'grails.plugin.springsecurity.saml.keyManager.privateKeyFile' could not be found.")
+            }
+
+            X509Certificate publicKey = (X509Certificate)readCertificate(certificateFile)
+            PrivateKey privateKey = (PrivateKey)readPrivateKey(privateKeyFile)
+
+            relyingPartySigningCredential = new Saml2X509Credential(privateKey, publicKey,
+                    Saml2X509Credential.Saml2X509CredentialType.SIGNING, Saml2X509Credential.Saml2X509CredentialType.DECRYPTION)
         }
-        if (signingEntry == null) {
-            throw new IOException("Keystore entry ${signingKey} cannot be loaded from file '${conf.saml.keyManager.storeFile}'. " +
-                 "Please check that the path configured in " +
-                 "'grails.plugin.springsecurity.saml.keyManager.storeFile' in your application.yml is correct.")
+
+        if (!relyingPartySigningCredential) {
+            throw new IOException("Neither the keystore nor PEM files could be loaded. Please configure either " +
+                "'grails.plugin.springsecurity.saml.keyManager.storeFile' or 'grails.plugin.springsecurity.saml.keyManager.privateKeyFile' " +
+                "and 'grails.plugin.springsecurity.saml.keyManager.certificateFile'.")
         }
-        Saml2X509Credential relyingPartySigningCredential = new Saml2X509Credential(signingEntry.privateKey,
-            signingEntry.certificate, Saml2X509Credential.Saml2X509CredentialType.SIGNING, Saml2X509Credential.Saml2X509CredentialType.DECRYPTION)
 
         return RelyingPartyRegistrations.fromMetadataLocation(metadataLocation)
             .registrationId(registrationId)
