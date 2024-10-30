@@ -4,29 +4,27 @@ import grails.plugin.springsecurity.SecurityFilterPosition
 import grails.plugin.springsecurity.SpringSecurityUtils
 import grails.plugin.springsecurity.web.authentication.AjaxAwareAuthenticationFailureHandler
 import grails.plugins.Plugin
-import org.cryptacular.adapter.WrappedRSAPrivateCrtKey
-import org.cryptacular.adapter.WrappedRSAPublicKey
 import org.cryptacular.util.CertUtil
 import org.cryptacular.util.KeyPairUtil
 import org.springframework.core.io.Resource
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.saml2.core.Saml2X509Credential
-import org.springframework.security.saml2.provider.service.authentication.OpenSamlAuthenticationProvider
-import org.springframework.security.saml2.provider.service.authentication.OpenSamlAuthenticationRequestFactory
+import org.springframework.security.saml2.provider.service.authentication.OpenSaml4AuthenticationProvider
+import org.springframework.security.saml2.provider.service.authentication.OpenSaml4AuthenticationRequestFactory
 import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal
 import org.springframework.security.saml2.provider.service.authentication.logout.OpenSamlLogoutRequestValidator
 import org.springframework.security.saml2.provider.service.authentication.logout.OpenSamlLogoutResponseValidator
 import org.springframework.security.saml2.provider.service.metadata.OpenSamlMetadataResolver
 import org.springframework.security.saml2.provider.service.registration.InMemoryRelyingPartyRegistrationRepository
 import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistrations
-import org.springframework.security.saml2.provider.service.servlet.filter.Saml2WebSsoAuthenticationFilter
-import org.springframework.security.saml2.provider.service.servlet.filter.Saml2WebSsoAuthenticationRequestFilter
+import org.springframework.security.saml2.provider.service.web.authentication.Saml2WebSsoAuthenticationFilter
 import org.springframework.security.saml2.provider.service.web.*
 import org.springframework.security.saml2.provider.service.web.authentication.logout.*
 import org.springframework.security.web.DefaultRedirectStrategy
 import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler
 import org.springframework.security.web.authentication.logout.*
+import org.springframework.security.web.authentication.session.LoginNonceSessionFixationProtectionStrategy
 import org.springframework.security.web.authentication.session.SessionFixationProtectionStrategy
 import org.springframework.security.web.util.matcher.AndRequestMatcher
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher
@@ -39,7 +37,6 @@ import java.security.KeyStore.PrivateKeyEntry
 import java.security.PrivateKey
 import java.security.cert.X509Certificate
 import java.security.interfaces.RSAPrivateKey
-import java.security.interfaces.RSAPublicKey
 import java.util.function.Predicate
 
 class SpringSecuritySamlGrailsPlugin extends Plugin {
@@ -90,9 +87,15 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             SpringSecurityUtils.registerFilter 'saml2LogoutResponseFilter', SecurityFilterPosition.SECURITY_CONTEXT_FILTER.order + 4
             SpringSecurityUtils.registerFilter 'relyingPartyLogoutFilter', SecurityFilterPosition.SECURITY_CONTEXT_FILTER.order + 6
 
+            requestCache(LoginNonceRequestCache) {
+                loginNonceService = ref('loginNonceService')
+            }
+
             successRedirectHandler(SavedRequestAwareAuthenticationSuccessHandler) {
                 alwaysUseDefaultTargetUrl = conf.saml.alwaysUseAfterLoginUrl ?: false
                 defaultTargetUrl = conf.saml.afterLoginUrl
+                requestCache = ref('requestCache')
+                redirectStrategy = ref('redirectStrategy')
             }
 
             logoutSuccessHandler(SimpleUrlLogoutSuccessHandler) {
@@ -114,6 +117,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 registrations << registrationFromMetadata(conf, registrationId, metadataLocation, keystore)
             }
 
+            // Retrieve UserDetails via SSO
             userDetailsService(SpringSamlUserDetailsService) {
                 grailsApplication = grailsApplication
                 authorityClassName = conf.authority.className
@@ -128,11 +132,12 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 userDomainClassName = conf.userLookup.userDomainClassName
             }
 
+            // compatibility shim for UserDetailsService
             samlResponseAuthenticationConverter(SamlResponseAuthenticationConverter) {
                 userDetailsService = ref('userDetailsService')
             }
 
-            samlAuthenticationProvider(OpenSamlAuthenticationProvider) {
+            samlAuthenticationProvider(OpenSaml4AuthenticationProvider) {
                 responseAuthenticationConverter = ref('samlResponseAuthenticationConverter')
             }
 
@@ -144,10 +149,21 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 exceptionMappings = conf.failureHandler.exceptionMappings // [:]
                 allowSessionCreation = conf.failureHandler.allowSessionCreation // true
             }
-            redirectStrategy(DefaultRedirectStrategy) {
+            redirectStrategy(PostAwareRedirectStrategy) {
                 contextRelative = conf.redirectStrategy.contextRelative // false
             }
-            sessionFixationProtectionStrategy(SessionFixationProtectionStrategy)
+
+            // The login nonce transfers attributes from a previously authenticated session to the newly authenticated session
+            loginNonceService(LoginNonceService)
+            loginNonceSessionListener(LoginNonceSessionListener) {
+                loginNonceService = ref('loginNonceService')
+            }
+            String sameSite = conf.saml.jsessionid.sameSite ?: "Lax"
+            if (sameSite == "Lax") {
+                jsessionidCookieSameSiteSupplier(JSESSIONIDCookieSameSiteSupplier)
+            }
+            sessionFixationProtectionStrategy(SessionFixationProtectionStrategy) {
+            }
 
             logoutHandler(SecurityContextLogoutHandler) {
                 invalidateHttpSession = true
@@ -170,13 +186,26 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                         "and set grails.plugin.springsecurity.saml.metadata.hideProviderWarning = true to skip this warning.")
                 }
             } else {
+                // collection of identity and service provider pairs
                 relyingPartyRegistrationRepository(InMemoryRelyingPartyRegistrationRepository, registrations)
             }
 
             relyingPartyRegistrationRepositoryResolver(DefaultRelyingPartyRegistrationResolver, ref('relyingPartyRegistrationRepository'))
 
-            def defaultRegistrationId = null
-            if(conf.saml.metadata.defaultIdp && conf.saml.metadata.sp.defaults.assertionConsumerService) {
+            if (conf.saml.metadata.defaultIdp) {
+                println "Activating default registration ${conf.saml.metadata.defaultIdp}"
+                def defaultRegistrationId = (registrations
+                    .find{ it.assertingPartyDetails.entityId == conf.saml.metadata.defaultIdp }?.registrationId
+                    ?: conf.saml.metadata.defaultIdp)
+
+                // force the use of registrationId specified by 'defaultIdp'
+                defaultIdpRegistrationRepositoryResolver(DefaultRegistrationResolver) {
+                    relyingPartyRegistrationResolver = ref('relyingPartyRegistrationRepositoryResolver')
+                    defaultRegistration = defaultRegistrationId
+                }
+            }
+
+            if (conf.saml.metadata.defaultIdp && conf.saml.metadata.sp.defaults.assertionConsumerService) {
                 String loginProcessingUrl = null
                 try {
                     loginProcessingUrl = new URL(conf.saml.metadata.sp.defaults.assertionConsumerService).getPath()
@@ -184,21 +213,13 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                     println "Failed to get path from URL ${conf.saml.metadata.sp.defaults.assertionConsumerService}"
                 }
                 if (loginProcessingUrl != null) {
-                    println "Activating default registration ${conf.saml.metadata.defaultIdp}"
-                    defaultRegistrationId = (registrations
-                        .find{ it.assertingPartyDetails.entityId == conf.saml.metadata.defaultIdp }?.registrationId
-                        ?: conf.saml.metadata.defaultIdp)
-
-                    // force the use of defaultIdp registration
-                    defaultIdpRegistrationRepositoryResolver(DefaultRegistrationResolver) {
-                        relyingPartyRegistrationResolver = ref('relyingPartyRegistrationRepositoryResolver')
-                        defaultRegistration = defaultRegistrationId
+                    defaultIdpAuthenticationConverter(Saml2AuthenticationTokenConverter, ref('defaultIdpRegistrationRepositoryResolver')) {
+                        authenticationRequestRepository = ref('loginNonceSaml2AuthenticationRequestRepository')
                     }
 
-                    defaultIdpAuthenticationConverter(Saml2AuthenticationTokenConverter, ref('defaultIdpRegistrationRepositoryResolver'))
-
+                    // IDP -> SP communication
                     defaultIdpSaml2WebSsoAuthenticationFilter(Saml2WebSsoAuthenticationFilter, ref('defaultIdpAuthenticationConverter'), loginProcessingUrl) {
-                        authenticationRequestRepository = ref('authenticationRequestRepository')
+                        authenticationRequestRepository = ref('loginNonceSaml2AuthenticationRequestRepository')
                         authenticationManager = ref('authenticationManager')
                         sessionAuthenticationStrategy = ref('sessionFixationProtectionStrategy')
                         authenticationSuccessHandler = ref('successRedirectHandler')
@@ -215,7 +236,12 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             }
 
             contextResolver(DefaultSaml2AuthenticationRequestContextResolver, ref('relyingPartyRegistrationRepositoryResolver'))
-            authenticationConverter(Saml2AuthenticationTokenConverter, ref('relyingPartyRegistrationRepositoryResolver'))
+            loginNonceSaml2AuthenticationRequestRepository(LoginNonceSaml2AuthenticationRequestRepository) {
+                loginNonceService = ref('loginNonceService')
+            }
+            authenticationConverter(Saml2AuthenticationTokenConverter, ref('relyingPartyRegistrationRepositoryResolver')) {
+                authenticationRequestRepository = ref('loginNonceSaml2AuthenticationRequestRepository')
+            }
 
             openSamlMetadataResolver(OpenSamlMetadataResolver)
 
@@ -231,19 +257,23 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
 
             authenticationRequestRepository(HttpSessionSaml2AuthenticationRequestRepository)
 
-            authenticationRequestFactory(OpenSamlAuthenticationRequestFactory)
+            authenticationRequestFactory(OpenSaml4AuthenticationRequestFactory)
 
+            // IDP -> SP communication
             String loginProcessingUrl = "/login/saml2/sso/{registrationId}"
             saml2WebSsoAuthenticationFilter(Saml2WebSsoAuthenticationFilter, ref('authenticationConverter'), loginProcessingUrl) {
-                authenticationRequestRepository = ref('authenticationRequestRepository')
+                authenticationRequestRepository = ref('loginNonceSaml2AuthenticationRequestRepository')
                 authenticationManager = ref('authenticationManager')
                 sessionAuthenticationStrategy = ref('sessionFixationProtectionStrategy')
                 authenticationSuccessHandler = ref('successRedirectHandler')
                 authenticationFailureHandler = ref('authenticationFailureHandler')
             }
 
-            saml2AuthenticationRequestFilter(Saml2WebSsoAuthenticationRequestFilter, ref('contextResolver'), ref('authenticationRequestFactory')) {
-                authenticationRequestRepository = ref('authenticationRequestRepository')
+            // SP -> IDP communication
+            // The login nonce transfers attributes from a previously authenticated session to the newly authenticated session
+            saml2AuthenticationRequestFilter(LoginNonceSaml2WebSsoAuthenticationRequestFilter, ref('contextResolver'), ref('authenticationRequestFactory')) {
+                authenticationRequestRepository = ref('loginNonceSaml2AuthenticationRequestRepository')
+                loginNonceService = ref('loginNonceService')
             }
 
             String logoutUrl = "/logout/saml2"
@@ -251,11 +281,11 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             String logoutRequestUrl = "/logout/saml2/slo";
 
             logoutResponseValidator(OpenSamlLogoutResponseValidator)
-            logoutResponseResolver(OpenSaml3LogoutResponseResolver, ref('relyingPartyRegistrationRepositoryResolver'))
+            logoutResponseResolver(OpenSaml4LogoutResponseResolver, ref('relyingPartyRegistrationRepositoryResolver'))
 
             logoutRequestRepository(HttpSessionLogoutRequestRepository)
             logoutRequestValidator(OpenSamlLogoutRequestValidator)
-            logoutRequestResolver(OpenSaml3LogoutRequestResolver, ref('relyingPartyRegistrationRepositoryResolver'))
+            logoutRequestResolver(OpenSaml4LogoutRequestResolver, ref('relyingPartyRegistrationRepositoryResolver'))
 
             LogoutHandler[] logoutHandlers = [
                 new SecurityContextLogoutHandler(),
@@ -277,9 +307,8 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 logoutRequestRepository = ref('logoutRequestRepository')
             }
 
-            def singleLogoutService = conf.saml.metadata.sp.defaults.singleLogoutService
-            def defaultIdp = conf.saml.metadata.defaultIdp
-            if(defaultIdp && singleLogoutService) {
+            if (conf.saml.metadata.defaultIdp && conf.saml.metadata.sp.defaults.singleLogoutService) {
+                def singleLogoutService = conf.saml.metadata.sp.defaults.singleLogoutService
                 String defaultIdpLogoutResponseUrl = null
                 try {
                     defaultIdpLogoutResponseUrl = new URL(singleLogoutService).getPath()
@@ -287,6 +316,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                     println "Failed to get path from URL ${singleLogoutService}"
                 }
                 if (defaultIdpLogoutResponseUrl != null) {
+                    // IDP -> SP communication
                     defaultIdpSaml2LogoutRequestFilter(Saml2LogoutRequestFilter, ref('relyingPartyRegistrationRepositoryResolver'),
                             ref('logoutRequestValidator'), ref('logoutResponseResolver'), logoutHandlers) {
                         logoutRequestMatcher = new AndRequestMatcher(
@@ -294,6 +324,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                             new ParameterRequestMatcher("SAMLRequest"))
                     }
 
+                    // IDP -> SP communication
                     defaultIdpSaml2LogoutResponseFilter(Saml2LogoutResponseFilter, ref('relyingPartyRegistrationRepositoryResolver'),
                             ref('logoutResponseValidator'), ref('logoutSuccessHandler')) {
                         logoutRequestMatcher = new AndRequestMatcher(

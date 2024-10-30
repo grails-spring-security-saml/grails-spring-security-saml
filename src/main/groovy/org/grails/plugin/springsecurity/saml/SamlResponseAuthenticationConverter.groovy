@@ -3,8 +3,8 @@ package org.grails.plugin.springsecurity.saml;
 import org.springframework.core.convert.converter.Converter
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.saml2.provider.service.authentication.OpenSamlAuthenticationProvider;
-import org.springframework.security.saml2.provider.service.authentication.OpenSamlAuthenticationProvider.ResponseToken;
+import org.springframework.security.saml2.provider.service.authentication.OpenSaml4AuthenticationProvider;
+import org.springframework.security.saml2.provider.service.authentication.OpenSaml4AuthenticationProvider.ResponseToken;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.saml2.provider.service.authentication.Saml2Authentication
 import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal
@@ -15,15 +15,15 @@ public class SamlResponseAuthenticationConverter implements Converter<ResponseTo
     SpringSamlUserDetailsService userDetailsService
 
     AbstractAuthenticationToken convert(ResponseToken responseToken) {
-        Saml2Authentication authentication = OpenSamlAuthenticationProvider
+        Saml2Authentication authentication = OpenSaml4AuthenticationProvider
                 .createDefaultResponseAuthenticationConverter()
-                .convert(responseToken);
-        Saml2AuthenticatedPrincipal principal = (Saml2AuthenticatedPrincipal)authentication.principal;
-        UserDetails userDetails = userDetailsService.loadUserBySAML(principal);
+                .convert(responseToken)
+        Saml2AuthenticatedPrincipal principal = (Saml2AuthenticatedPrincipal)authentication.principal
+        UserDetails userDetails = userDetailsService.loadUserBySAML(principal)
         userDetails.setName(principal.name)
         userDetails.relyingPartyRegistrationId = principal.relyingPartyRegistrationId
         def customAuthentication = new NamedSaml2Authentication(principal.name,
-            userDetails, authentication.saml2Response, getEntitlements(userDetails));
+            userDetails, authentication.saml2Response, getEntitlements(userDetails))
         customAuthentication.setDetails(userDetails)
         return customAuthentication
     }
@@ -34,18 +34,18 @@ public class SamlResponseAuthenticationConverter implements Converter<ResponseTo
 
         if (userDetail instanceof UserDetails)
         {
-            List<GrantedAuthority> authorities = new ArrayList<>();
-            authorities.addAll(((UserDetails) userDetail).getAuthorities());
-            return authorities;
+            List<GrantedAuthority> authorities = new ArrayList<>()
+            authorities.addAll(((UserDetails) userDetail).getAuthorities())
+            return authorities
         }
-        else if(userDetail instanceof UsernamePasswordAuthenticationToken)
+        else if (userDetail instanceof UsernamePasswordAuthenticationToken)
         {
-            List<GrantedAuthority> authorities = new ArrayList<GrantedAuthority>();
-            authorities.addAll(((UsernamePasswordAuthenticationToken) userDetail).getAuthorities());
+            List<GrantedAuthority> authorities = new ArrayList<GrantedAuthority>()
+            authorities.addAll(((UsernamePasswordAuthenticationToken) userDetail).getAuthorities())
             return authorities;
 
         } else {
-            return Collections.emptyList();
+            return Collections.emptyList()
         }
     }
 }

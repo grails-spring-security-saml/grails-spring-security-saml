@@ -2,7 +2,7 @@ buildscript {
     repositories {
         mavenLocal()
         maven { url "https://repo.grails.org/grails/core" }
-        maven { url "https://central.maven.org/maven2/"}
+        maven { url "https://repo.maven.apache.org/maven2"}
     }
     dependencies {
         classpath "org.grails:grails-gradle-plugin:$grailsGradlePluginVersion"
@@ -12,7 +12,7 @@ buildscript {
     }
 }
 
-version "5.1.0"
+version "6.0.0-SNAPSHOT"
 group "io.github.grails-spring-security-saml"
 
 apply plugin:"com.jfrog.artifactory"
@@ -28,7 +28,8 @@ apply plugin: "io.github.gradle-nexus.publish-plugin"
 repositories {
     mavenLocal()
     maven { url "https://repo.grails.org/grails/core" }
-    maven { url "https://central.maven.org/maven2/"}
+    maven { url "https://repo.maven.apache.org/maven2"}
+    maven { url "https://build.shibboleth.net/maven/releases/"}
 }
 
 configurations {
@@ -58,7 +59,10 @@ dependencies {
     implementation "org.grails.plugins:gsp"
 
     implementation 'org.grails.plugins:spring-security-core:5.0.0-RC1'
-    implementation 'org.springframework.security:spring-security-saml2-service-provider:5.6.2'
+    implementation 'org.springframework.security:spring-security-saml2-service-provider:5.8.15'
+    implementation 'org.opensaml:opensaml-core:4.3.2'
+    implementation 'org.opensaml:opensaml-saml-api:4.3.2'
+    implementation 'org.opensaml:opensaml-saml-impl:4.3.2'
 
     console "org.grails:grails-console"
     profile "org.grails.profiles:web-plugin"
