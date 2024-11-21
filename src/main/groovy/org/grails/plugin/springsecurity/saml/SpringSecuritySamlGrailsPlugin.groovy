@@ -18,6 +18,7 @@ import org.springframework.security.saml2.provider.service.authentication.logout
 import org.springframework.security.saml2.provider.service.metadata.OpenSamlMetadataResolver
 import org.springframework.security.saml2.provider.service.registration.InMemoryRelyingPartyRegistrationRepository
 import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistrations
+import org.springframework.security.saml2.provider.service.web.authentication.OpenSaml4AuthenticationRequestResolver
 import org.springframework.security.saml2.provider.service.web.authentication.Saml2WebSsoAuthenticationFilter
 import org.springframework.security.saml2.provider.service.web.*
 import org.springframework.security.saml2.provider.service.web.authentication.logout.*
@@ -162,7 +163,8 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             if (sameSite == "Lax") {
                 jsessionidCookieSameSiteSupplier(JSESSIONIDCookieSameSiteSupplier)
             }
-            sessionFixationProtectionStrategy(SessionFixationProtectionStrategy) {
+            sessionFixationProtectionStrategy(LoginNonceSessionFixationProtectionStrategy) {
+                loginNonceService = ref('loginNonceService')
             }
 
             logoutHandler(SecurityContextLogoutHandler) {
@@ -257,7 +259,13 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
 
             authenticationRequestRepository(HttpSessionSaml2AuthenticationRequestRepository)
 
-            authenticationRequestFactory(OpenSaml4AuthenticationRequestFactory)
+            //authenticationRequestFactory(OpenSaml4AuthenticationRequestFactory)
+            relayStateResolver(LoginNonceRelayStateResolver) {
+                loginNonceService = ref("loginNonceService")
+            }
+            authenticationRequestResolver(OpenSaml4AuthenticationRequestResolver, ref('relyingPartyRegistrationRepositoryResolver')) {
+                relayStateResolver = ref("relayStateResolver")
+            }
 
             // IDP -> SP communication
             String loginProcessingUrl = "/login/saml2/sso/{registrationId}"
@@ -271,7 +279,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
 
             // SP -> IDP communication
             // The login nonce transfers attributes from a previously authenticated session to the newly authenticated session
-            saml2AuthenticationRequestFilter(LoginNonceSaml2WebSsoAuthenticationRequestFilter, ref('contextResolver'), ref('authenticationRequestFactory')) {
+            saml2AuthenticationRequestFilter(LoginNonceSaml2WebSsoAuthenticationRequestFilter, ref('authenticationRequestResolver')) {
                 authenticationRequestRepository = ref('loginNonceSaml2AuthenticationRequestRepository')
                 loginNonceService = ref('loginNonceService')
             }
@@ -283,7 +291,8 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             logoutResponseValidator(OpenSamlLogoutResponseValidator)
             logoutResponseResolver(OpenSaml4LogoutResponseResolver, ref('relyingPartyRegistrationRepositoryResolver'))
 
-            logoutRequestRepository(HttpSessionLogoutRequestRepository)
+            //logoutRequestRepository(HttpSessionLogoutRequestRepository)
+            logoutRequestRepository(CookieLogoutRequestRepository, ref("relyingPartyRegistrationRepository"))
             logoutRequestValidator(OpenSamlLogoutRequestValidator)
             logoutRequestResolver(OpenSaml4LogoutRequestResolver, ref('relyingPartyRegistrationRepositoryResolver'))
 
@@ -337,7 +346,9 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 }
             }
 
-            logoutRequestSuccessHandler(Saml2RelyingPartyInitiatedLogoutSuccessHandler, ref('logoutRequestResolver'))
+            logoutRequestSuccessHandler(Saml2RelyingPartyInitiatedLogoutSuccessHandler, ref('logoutRequestResolver')) {
+                logoutRequestRepository = ref('logoutRequestRepository')
+            }
 
             relyingPartyLogoutFilter(LogoutFilter, ref('logoutRequestSuccessHandler'), logoutHandlers) {
                 logoutRequestMatcher = new AndRequestMatcher(

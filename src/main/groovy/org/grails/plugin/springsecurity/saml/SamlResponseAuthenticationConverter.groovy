@@ -16,8 +16,8 @@ public class SamlResponseAuthenticationConverter implements Converter<ResponseTo
 
     AbstractAuthenticationToken convert(ResponseToken responseToken) {
         Saml2Authentication authentication = OpenSaml4AuthenticationProvider
-                .createDefaultResponseAuthenticationConverter()
-                .convert(responseToken)
+            .createDefaultResponseAuthenticationConverter()
+            .convert(responseToken)
         Saml2AuthenticatedPrincipal principal = (Saml2AuthenticatedPrincipal)authentication.principal
         UserDetails userDetails = userDetailsService.loadUserBySAML(principal)
         userDetails.setName(principal.name)
@@ -31,15 +31,11 @@ public class SamlResponseAuthenticationConverter implements Converter<ResponseTo
     public Collection<? extends GrantedAuthority> getEntitlements(Object userDetail)
     {
         //logger.info("****** object is instance of UserDetails :"+ (userDetail instanceof UserDetails));
-
-        if (userDetail instanceof UserDetails)
-        {
+        if (userDetail instanceof UserDetails) {
             List<GrantedAuthority> authorities = new ArrayList<>()
             authorities.addAll(((UserDetails) userDetail).getAuthorities())
             return authorities
-        }
-        else if (userDetail instanceof UsernamePasswordAuthenticationToken)
-        {
+        } else if (userDetail instanceof UsernamePasswordAuthenticationToken) {
             List<GrantedAuthority> authorities = new ArrayList<GrantedAuthority>()
             authorities.addAll(((UsernamePasswordAuthenticationToken) userDetail).getAuthorities())
             return authorities;

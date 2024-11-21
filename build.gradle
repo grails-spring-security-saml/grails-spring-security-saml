@@ -12,18 +12,18 @@ buildscript {
     }
 }
 
-version "6.0.0-SNAPSHOT"
+version "6.0.1-SNAPSHOT"
 group "io.github.grails-spring-security-saml"
 
-apply plugin:"com.jfrog.artifactory"
-apply plugin:"eclipse"
-apply plugin:"idea"
-apply plugin:"org.grails.grails-plugin"
+apply plugin: 'com.jfrog.artifactory'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+apply plugin: 'org.grails.grails-plugin'
 apply plugin: 'maven-publish'
-apply plugin:"com.bertramlabs.asset-pipeline"
-apply plugin:"org.grails.grails-gsp"
+apply plugin: 'com.bertramlabs.asset-pipeline'
+apply plugin: 'org.grails.grails-gsp'
 apply plugin: 'signing'
-apply plugin: "io.github.gradle-nexus.publish-plugin"
+apply plugin: 'io.github.gradle-nexus.publish-plugin'
 
 repositories {
     mavenLocal()
@@ -181,7 +181,6 @@ artifactory {
             username = System.getenv("GRAILSREPO_USER")
             password = System.getenv("GRAILSREPO_PASS")
             maven = true
-
         }
         defaults {
             publications('maven')
@@ -193,7 +192,6 @@ artifactory {
             username = System.getenv("GRAILSREPO_USER")
             password = System.getenv("GRAILSREPO_PASS")
             maven = true
-
         }
     }
 }
