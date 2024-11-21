@@ -39,6 +39,7 @@ class LoginNonceService {
      * @return
      */
     def prepareSession(HttpSession session, String nonce) {
+        cleanupSession(session)
         session.setAttribute(ATTRIBUTE_NAME, nonce)
         sessionByAttribute.put(nonce, session)
     }

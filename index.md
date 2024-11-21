@@ -96,7 +96,7 @@ $> grails s2-quickstart com.jeffwils UserAcct Role
 
 This will create the Spring Security Domain Classes and it will create/modify the application.groovy file. You can convert the generated configuration to yaml format and use it in application.yml as well.
 
-Warning: Some table or column names may conflict with existing SQL keywords such as 'USER' or 'PASSWORD' on postgres or other RDBMS. If neccessary these can be adjusted in the mapping block of your user domain class:
+Warning: Some table or column names may conflict with existing SQL keywords such as 'USER' or 'PASSWORD' on postgres or other RDBMS. If necessary these can be adjusted in the mapping block of your user domain class:
 
 ```
 static mapping = {
@@ -121,26 +121,27 @@ All of these properties can be put in either `application.yml` or `application.g
 **grails.plugins.springsecurity.saml**
 
 
-| Property | Syntax | Example Value | Description |
-|--------|------|-------------|-----------|
-| active | boolean | true | States whether or not SAML is active |
-| afterLoginUrl | url string | '/' | Redirection Url in your application upon successful login from the IDP |
-| afterLogoutUrl | url string | '/' | Redirection Url in your application upon successful logout from the IDP |
-| userAttributeMappings | Map | [username:'funkyUserNameFromIDP'] | Allows Custom Mapping if both Application and IDP Attribute Names cannot be changed. |
-| userGroupAttribute | String Value | 'memberOf' | Corresponds to the Role Designator in the SAML Assertion from the IDP |
-| userGroupToRoleMapping | Map [Spring Security Role: Saml Assertion Role] | [ROLE_MY_APP_ROLE: 'CN=MYSAMLGROUP, OU=MyAppGroups, DC=myldap, DC=example, DC=com'] | This maps the Spring Security Roles in your application to the roles from the SAML Assertion.  Only roles in this Map will be resolved. |
-| useLocalRoles | boolean | true | Determine a user's role based on the existing values in the local Spring Security tables. Will merge with additional roles loaded via `userGroupAttribute` and `userGroupToRoleMapping`. Defaults to `false`.
-| autoCreate.active | boolean | false | If you want the plugin to generate users in the DB as they are authenticated via SAML
-| autoCreate.key | domain class unique identifier | 'id' | if autoCreate active is true then this is the unique id field of the db table |
-| autoCreate.assignAuthorities | boolean | false | If you want the plugin to insert the authorities that come from the SAML message into the UserRole Table. |
-| metadata.providers | Map [registrationId: idp file reference] | [ping:"/pathtoIdpFile/myIdp.xml"] | Map of idp providers. Contain a registration id and reference to the idp xml file |
-| metadata.defaultIdp | String | 'https://idp.example.org/idp/shibboleth' | the entityId of the default Idp from the ones listed in the metadata.provider map. If no entityId is given an IDP will be picked from the list automatically. |
-| metadata.url | relative url | '/saml/metadata/{registrationId}' | url used to retrieve the SP metadata for your app to send to the IDP |
-| metadata.sp.defaults.entityId | String Value |'http://myapp.example.com' | Identifier for the Service Provider |
-| metadata.sp.defaults.signingKey | keystore alias | 'mykey' | For local entities alias of private key used to create signatures. The default private key is used when no value is provided. For remote identity providers defines an additional public key used to verify signatures. |
-| keyManager.storeFile | file reference string |  "/mypath/mykeystore.jks" |
-| keyManager.storePass | password string | 'changeit' | Keypass to keystore referenced in storeFile |
-| keyManager.passwords | password map [private key registrationId:password] | [mykey:'changeit'] | Map of registration ids and passwords if private key in storeFile is password protected |
+| Property                        | Syntax                                             | Example Value                                                                       | Description                                                                                                                                                                                                             |
+|---------------------------------|----------------------------------------------------|-------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| active                          | boolean                                            | true                                                                                | States whether or not SAML is active                                                                                                                                                                                    |
+| afterLoginUrl                   | url string                                         | '/'                                                                                 | Redirection Url in your application upon successful login from the IDP                                                                                                                                                  |
+| afterLogoutUrl                  | url string                                         | '/'                                                                                 | Redirection Url in your application upon successful logout from the IDP                                                                                                                                                 |
+| loginNonce                      | boolean                                            | true                                                                                | Activates login nonce based session correlation to allow JSESSIONID to be set to SameSite=Strict. A nonce will be sent via cookie and relayState to retrieve the initiating session.                             |
+| userAttributeMappings           | Map                                                | [username:'funkyUserNameFromIDP']                                                   | Allows Custom Mapping if both Application and IDP Attribute Names cannot be changed.                                                                                                                                    |
+| userGroupAttribute              | String Value                                       | 'memberOf'                                                                          | Corresponds to the Role Designator in the SAML Assertion from the IDP                                                                                                                                                   |
+| userGroupToRoleMapping          | Map [Spring Security Role: Saml Assertion Role]    | [ROLE_MY_APP_ROLE: 'CN=MYSAMLGROUP, OU=MyAppGroups, DC=myldap, DC=example, DC=com'] | This maps the Spring Security Roles in your application to the roles from the SAML Assertion.  Only roles in this Map will be resolved.                                                                                 |
+| useLocalRoles                   | boolean                                            | true                                                                                | Determine a user's role based on the existing values in the local Spring Security tables. Will merge with additional roles loaded via `userGroupAttribute` and `userGroupToRoleMapping`. Defaults to `false`.           
+| autoCreate.active               | boolean                                            | false                                                                               | If you want the plugin to generate users in the DB as they are authenticated via SAML                                                                                                                                   
+| autoCreate.key                  | domain class unique identifier                     | 'id'                                                                                | if autoCreate active is true then this is the unique id field of the db table                                                                                                                                           |
+| autoCreate.assignAuthorities    | boolean                                            | false                                                                               | If you want the plugin to insert the authorities that come from the SAML message into the UserRole Table.                                                                                                               |
+| metadata.providers              | Map [registrationId: idp file reference]           | [ping:"/pathtoIdpFile/myIdp.xml"]                                                   | Map of idp providers. Contain a registration id and reference to the idp xml file                                                                                                                                       |
+| metadata.defaultIdp             | String                                             | 'https://idp.example.org/idp/shibboleth'                                            | the entityId of the default Idp from the ones listed in the metadata.provider map. If no entityId is given an IDP will be picked from the list automatically.                                                           |
+| metadata.url                    | relative url                                       | '/saml/metadata/{registrationId}'                                                   | url used to retrieve the SP metadata for your app to send to the IDP                                                                                                                                                    |
+| metadata.sp.defaults.entityId   | String Value                                       | 'http://myapp.example.com'                                                          | Identifier for the Service Provider                                                                                                                                                                                     |
+| metadata.sp.defaults.signingKey | keystore alias                                     | 'mykey'                                                                             | For local entities alias of private key used to create signatures. The default private key is used when no value is provided. For remote identity providers defines an additional public key used to verify signatures. |
+| keyManager.storeFile            | file reference string                              | "/mypath/mykeystore.jks"                                                            |
+| keyManager.storePass            | password string                                    | 'changeit'                                                                          | Keypass to keystore referenced in storeFile                                                                                                                                                                             |
+| keyManager.passwords            | password map [private key registrationId:password] | [mykey:'changeit']                                                                  | Map of registration ids and passwords if private key in storeFile is password protected                                                                                                                                 |
 
 #### Example Configuration
 
@@ -270,6 +271,7 @@ grails:
             active: true
             afterLoginUrl: '/'
             afterLogoutUrl: '/'
+            loginNonce: false
             userGroupAttribute = 'roles'
             autoCreate:
                 active: false # If you want the plugin to generate users in the DB as they are authenticated via SAML

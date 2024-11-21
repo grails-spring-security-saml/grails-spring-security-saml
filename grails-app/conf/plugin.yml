@@ -2,8 +2,7 @@ grails:
     plugin:
         springsecurity:
             saml:
-                jsessionid:
-                    sameSite: "Lax"
+                loginNonce: false
                 userAttributeMappings: {}
                 active: true
                 afterLoginUrl: '/'

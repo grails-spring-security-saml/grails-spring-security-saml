@@ -35,16 +35,17 @@ class SamlTagLib extends SecurityTagLib {
      * {@inheritDocs}
      */
     def loginLink = { attrs, body ->
+        def springSecurityConfig = grailsApplication.config.grails.plugin.springsecurity
         def contextPath = request.contextPath
-        def url = Holders.grailsApplication.config.grails.plugin.springsecurity.auth.loginFormUrl
+        def url = springSecurityConfig.auth.loginFormUrl
         def selectIdp = attrs.remove('selectIdp')
 
-        def samlEnabled = Holders.grailsApplication.config.grails.plugin.springsecurity.saml.active
+        def samlEnabled = springSecurityConfig.saml.active
         if (samlEnabled) {
-            def defaultIdp = Holders.grailsApplication.config.grails.plugin.springsecurity.saml.metadata.defaultIdp
+            def defaultIdp = springSecurityConfig.saml.metadata.defaultIdp
             def defaultRegistration = (relyingPartyRegistrationRepository
                 .find{ it.assertingPartyDetails.entityId == defaultIdp }.registrationId
-                ?: conf.saml.metadata.defaultIdp)
+                ?: defaultIdp)
 
             url = "/saml2/authenticate/${selectIdp ?: defaultRegistration}"
         }
@@ -61,7 +62,8 @@ class SamlTagLib extends SecurityTagLib {
     def logoutLink = { attrs, body ->
         def contextPath = request.contextPath
         def local = attrs.remove('local')
-        def url = Holders.grailsApplication.config.grails.plugin.springsecurity.logout.filterProcessesUrl
+        def springSecurityConfig = grailsApplication.config.grails.plugin.springsecurity
+        def url = springSecurityConfig.logout.filterProcessesUrl
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication instanceof Saml2Authentication) {

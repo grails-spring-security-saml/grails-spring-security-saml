@@ -27,6 +27,7 @@ import org.springframework.security.web.authentication.SavedRequestAwareAuthenti
 import org.springframework.security.web.authentication.logout.*
 import org.springframework.security.web.authentication.session.LoginNonceSessionFixationProtectionStrategy
 import org.springframework.security.web.authentication.session.SessionFixationProtectionStrategy
+import org.springframework.security.web.savedrequest.HttpSessionRequestCache
 import org.springframework.security.web.util.matcher.AndRequestMatcher
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher
 import org.springframework.security.web.util.matcher.RequestMatcher
@@ -88,9 +89,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             SpringSecurityUtils.registerFilter 'saml2LogoutResponseFilter', SecurityFilterPosition.SECURITY_CONTEXT_FILTER.order + 4
             SpringSecurityUtils.registerFilter 'relyingPartyLogoutFilter', SecurityFilterPosition.SECURITY_CONTEXT_FILTER.order + 6
 
-            requestCache(LoginNonceRequestCache) {
-                loginNonceService = ref('loginNonceService')
-            }
+            requestCache(HttpSessionRequestCache)
 
             successRedirectHandler(SavedRequestAwareAuthenticationSuccessHandler) {
                 alwaysUseDefaultTargetUrl = conf.saml.alwaysUseAfterLoginUrl ?: false
@@ -154,18 +153,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 contextRelative = conf.redirectStrategy.contextRelative // false
             }
 
-            // The login nonce transfers attributes from a previously authenticated session to the newly authenticated session
-            loginNonceService(LoginNonceService)
-            loginNonceSessionListener(LoginNonceSessionListener) {
-                loginNonceService = ref('loginNonceService')
-            }
-            String sameSite = conf.saml.jsessionid.sameSite ?: "Lax"
-            if (sameSite == "Lax") {
-                jsessionidCookieSameSiteSupplier(JSESSIONIDCookieSameSiteSupplier)
-            }
-            sessionFixationProtectionStrategy(LoginNonceSessionFixationProtectionStrategy) {
-                loginNonceService = ref('loginNonceService')
-            }
+            sessionFixationProtectionStrategy(SessionFixationProtectionStrategy)
 
             logoutHandler(SecurityContextLogoutHandler) {
                 invalidateHttpSession = true
@@ -216,12 +204,12 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 }
                 if (loginProcessingUrl != null) {
                     defaultIdpAuthenticationConverter(Saml2AuthenticationTokenConverter, ref('defaultIdpRegistrationRepositoryResolver')) {
-                        authenticationRequestRepository = ref('loginNonceSaml2AuthenticationRequestRepository')
+                        authenticationRequestRepository = ref('authenticationRequestRepository')
                     }
 
                     // IDP -> SP communication
                     defaultIdpSaml2WebSsoAuthenticationFilter(Saml2WebSsoAuthenticationFilter, ref('defaultIdpAuthenticationConverter'), loginProcessingUrl) {
-                        authenticationRequestRepository = ref('loginNonceSaml2AuthenticationRequestRepository')
+                        authenticationRequestRepository = ref('authenticationRequestRepository')
                         authenticationManager = ref('authenticationManager')
                         sessionAuthenticationStrategy = ref('sessionFixationProtectionStrategy')
                         authenticationSuccessHandler = ref('successRedirectHandler')
@@ -235,14 +223,13 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 springSecurityService = ref('springSecurityService')
                 webExpressionHandler = ref('webExpressionHandler')
                 webInvocationPrivilegeEvaluator = ref('webInvocationPrivilegeEvaluator')
+                grailsApplication = grailsApplication
             }
 
             contextResolver(DefaultSaml2AuthenticationRequestContextResolver, ref('relyingPartyRegistrationRepositoryResolver'))
-            loginNonceSaml2AuthenticationRequestRepository(LoginNonceSaml2AuthenticationRequestRepository) {
-                loginNonceService = ref('loginNonceService')
-            }
+            authenticationRequestRepository(HttpSessionSaml2AuthenticationRequestRepository)
             authenticationConverter(Saml2AuthenticationTokenConverter, ref('relyingPartyRegistrationRepositoryResolver')) {
-                authenticationRequestRepository = ref('loginNonceSaml2AuthenticationRequestRepository')
+                authenticationRequestRepository = ref('authenticationRequestRepository')
             }
 
             openSamlMetadataResolver(OpenSamlMetadataResolver)
@@ -257,20 +244,13 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 }
             }
 
-            authenticationRequestRepository(HttpSessionSaml2AuthenticationRequestRepository)
-
             //authenticationRequestFactory(OpenSaml4AuthenticationRequestFactory)
-            relayStateResolver(LoginNonceRelayStateResolver) {
-                loginNonceService = ref("loginNonceService")
-            }
-            authenticationRequestResolver(OpenSaml4AuthenticationRequestResolver, ref('relyingPartyRegistrationRepositoryResolver')) {
-                relayStateResolver = ref("relayStateResolver")
-            }
+            authenticationRequestResolver(OpenSaml4AuthenticationRequestResolver, ref('relyingPartyRegistrationRepositoryResolver'))
 
             // IDP -> SP communication
             String loginProcessingUrl = "/login/saml2/sso/{registrationId}"
             saml2WebSsoAuthenticationFilter(Saml2WebSsoAuthenticationFilter, ref('authenticationConverter'), loginProcessingUrl) {
-                authenticationRequestRepository = ref('loginNonceSaml2AuthenticationRequestRepository')
+                authenticationRequestRepository = ref('authenticationRequestRepository')
                 authenticationManager = ref('authenticationManager')
                 sessionAuthenticationStrategy = ref('sessionFixationProtectionStrategy')
                 authenticationSuccessHandler = ref('successRedirectHandler')
@@ -279,9 +259,8 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
 
             // SP -> IDP communication
             // The login nonce transfers attributes from a previously authenticated session to the newly authenticated session
-            saml2AuthenticationRequestFilter(LoginNonceSaml2WebSsoAuthenticationRequestFilter, ref('authenticationRequestResolver')) {
-                authenticationRequestRepository = ref('loginNonceSaml2AuthenticationRequestRepository')
-                loginNonceService = ref('loginNonceService')
+            saml2AuthenticationRequestFilter(Saml2WebSsoAuthenticationRequestFilter, ref('authenticationRequestResolver')) {
+                authenticationRequestRepository = ref('authenticationRequestRepository')
             }
 
             String logoutUrl = "/logout/saml2"
@@ -354,6 +333,43 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 logoutRequestMatcher = new AndRequestMatcher(
                     new AntPathRequestMatcher(logoutUrl),
                     new Saml2RequestMatcher())
+            }
+
+            // login nonce augmented versions of the previously set up beans
+            Boolean loginNonceEnabled = conf.saml.loginNonce ?: false
+            if (loginNonceEnabled) {
+                jsessionidCookieSameSiteSupplier(JSESSIONIDCookieSameSiteSupplier)
+
+                requestCache(LoginNonceRequestCache) {
+                    loginNonceService = ref('loginNonceService')
+                }
+
+                // The login nonce transfers attributes from a previously authenticated session to the newly authenticated session
+                loginNonceService(LoginNonceService)
+                loginNonceSessionListener(LoginNonceSessionListener) {
+                    loginNonceService = ref('loginNonceService')
+                }
+                sessionFixationProtectionStrategy(LoginNonceSessionFixationProtectionStrategy) {
+                    loginNonceService = ref('loginNonceService')
+                }
+                authenticationRequestRepository(LoginNonceSaml2AuthenticationRequestRepository) {
+                    loginNonceService = ref('loginNonceService')
+                }
+
+                authenticationRequestResolver(OpenSaml4AuthenticationRequestResolver, ref('relyingPartyRegistrationRepositoryResolver')) {
+                    relayStateResolver = ref("relayStateResolver")
+                }
+
+                relayStateResolver(LoginNonceRelayStateResolver) {
+                    loginNonceService = ref("loginNonceService")
+                }
+
+                // SP -> IDP communication
+                // The login nonce transfers attributes from a previously authenticated session to the newly authenticated session
+                saml2AuthenticationRequestFilter(LoginNonceSaml2WebSsoAuthenticationRequestFilter, ref('authenticationRequestResolver')) {
+                    authenticationRequestRepository = ref('authenticationRequestRepository')
+                    loginNonceService = ref('loginNonceService')
+                }
             }
 
             println '...finished configuring Spring Security SAML'
