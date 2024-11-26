@@ -11,7 +11,6 @@ import org.springframework.security.core.Authentication
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.saml2.core.Saml2X509Credential
 import org.springframework.security.saml2.provider.service.authentication.OpenSaml4AuthenticationProvider
-import org.springframework.security.saml2.provider.service.authentication.OpenSaml4AuthenticationRequestFactory
 import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal
 import org.springframework.security.saml2.provider.service.authentication.logout.OpenSamlLogoutRequestValidator
 import org.springframework.security.saml2.provider.service.authentication.logout.OpenSamlLogoutResponseValidator
@@ -22,7 +21,6 @@ import org.springframework.security.saml2.provider.service.web.authentication.Op
 import org.springframework.security.saml2.provider.service.web.authentication.Saml2WebSsoAuthenticationFilter
 import org.springframework.security.saml2.provider.service.web.*
 import org.springframework.security.saml2.provider.service.web.authentication.logout.*
-import org.springframework.security.web.DefaultRedirectStrategy
 import org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler
 import org.springframework.security.web.authentication.logout.*
 import org.springframework.security.web.authentication.session.LoginNonceSessionFixationProtectionStrategy
@@ -60,11 +58,11 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
     def dependsOn = ['springSecurityCore' : '3.2.0 > *']
     // resources that are excluded from plugin packaging
     def pluginExcludes = [
-            'test/**',
-            "grails-app/views/error.gsp",
-            "UrlMappings",
-            'docs/**',
-            'scripts/PublishGithub.groovy'
+        'test/**',
+        "grails-app/views/error.gsp",
+        "UrlMappings",
+        'docs/**',
+        'scripts/PublishGithub.groovy'
     ]
 
     // Any additional developers beyond the author specified above.
@@ -270,8 +268,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             logoutResponseValidator(OpenSamlLogoutResponseValidator)
             logoutResponseResolver(OpenSaml4LogoutResponseResolver, ref('relyingPartyRegistrationRepositoryResolver'))
 
-            //logoutRequestRepository(HttpSessionLogoutRequestRepository)
-            logoutRequestRepository(CookieLogoutRequestRepository, ref("relyingPartyRegistrationRepository"))
+            logoutRequestRepository(HttpSessionLogoutRequestRepository)
             logoutRequestValidator(OpenSamlLogoutRequestValidator)
             logoutRequestResolver(OpenSaml4LogoutRequestResolver, ref('relyingPartyRegistrationRepositoryResolver'))
 
@@ -310,6 +307,17 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                         logoutRequestMatcher = new AndRequestMatcher(
                             new AntPathRequestMatcher(defaultIdpLogoutResponseUrl),
                             new ParameterRequestMatcher("SAMLRequest"))
+                    }
+
+                    Boolean logoutNonceEnabled = conf.saml.logoutNonce ?: false
+                    if (logoutNonceEnabled) {
+                        // IDP -> SP communication
+                        defaultIdpSaml2LogoutRequestFilter(LogoutNonceSaml2LogoutRequestFilter, ref('relyingPartyRegistrationRepositoryResolver'),
+                                ref('logoutRequestValidator'), ref('logoutResponseResolver'), logoutHandlers) {
+                            logoutRequestMatcher = new AndRequestMatcher(
+                                    new AntPathRequestMatcher(defaultIdpLogoutResponseUrl),
+                                    new ParameterRequestMatcher("SAMLRequest"))
+                        }
                     }
 
                     // IDP -> SP communication
@@ -369,6 +377,34 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 saml2AuthenticationRequestFilter(LoginNonceSaml2WebSsoAuthenticationRequestFilter, ref('authenticationRequestResolver')) {
                     authenticationRequestRepository = ref('authenticationRequestRepository')
                     loginNonceService = ref('loginNonceService')
+                }
+            }
+
+            Boolean logoutNonceEnabled = conf.saml.logoutNonce ?: false
+            if (logoutNonceEnabled) {
+                logoutNonceService(LogoutNonceService)
+                logoutRequestRepository(LogoutNonceLogoutRequestRepository) {
+                    logoutNonceService = ref('logoutNonceService')
+                }
+
+                successRedirectHandlerOriginal(SavedRequestAwareAuthenticationSuccessHandler) {
+                    alwaysUseDefaultTargetUrl = conf.saml.alwaysUseAfterLoginUrl ?: false
+                    defaultTargetUrl = conf.saml.afterLoginUrl
+                    requestCache = ref('requestCache')
+                    redirectStrategy = ref('redirectStrategy')
+                }
+
+                successRedirectHandler(LogoutNonceAuthenticationSuccessHandler) {
+                    logoutNonceService = ref('logoutNonceService')
+                    authenticationSuccessHandler = ref('successRedirectHandlerOriginal')
+                }
+
+                saml2LogoutRequestFilter(LogoutNonceSaml2LogoutRequestFilter, ref('relyingPartyRegistrationRepositoryResolver'),
+                    ref('logoutRequestValidator'), ref('logoutResponseResolver'), logoutHandlers) {
+
+                    logoutRequestMatcher = new AndRequestMatcher(
+                        new AntPathRequestMatcher(logoutRequestUrl),
+                        new ParameterRequestMatcher("SAMLRequest"))
                 }
             }
 

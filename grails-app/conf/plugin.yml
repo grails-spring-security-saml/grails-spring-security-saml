@@ -3,6 +3,7 @@ grails:
         springsecurity:
             saml:
                 loginNonce: false
+                logoutNonce: false
                 userAttributeMappings: {}
                 active: true
                 afterLoginUrl: '/'

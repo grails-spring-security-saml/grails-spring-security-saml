@@ -1,8 +1,7 @@
-package org.springframework.security.saml2.provider.service.web
+package org.grails.plugin.springsecurity.saml
 
 
-import org.grails.plugin.springsecurity.saml.LoginNonceService
-import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticationRequestFactory
+import org.springframework.security.saml2.provider.service.web.Saml2WebSsoAuthenticationRequestFilter
 import org.springframework.security.saml2.provider.service.web.authentication.Saml2AuthenticationRequestResolver
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher
 import org.springframework.security.web.util.matcher.RequestMatcher

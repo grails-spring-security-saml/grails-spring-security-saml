@@ -13,8 +13,6 @@ import javax.servlet.http.HttpSession
  *
  */
 class LoginNonceSessionFixationProtectionStrategy extends AbstractSessionFixationProtectionStrategy {
-    public static final String COOKIE_NAME = "LoginNonce"
-
     LoginNonceService loginNonceService
 
     Boolean migrateSessionAttributes = true
@@ -27,6 +25,7 @@ class LoginNonceSessionFixationProtectionStrategy extends AbstractSessionFixatio
         return this.createMigratedAttributeMap(session);
     }
 
+    @Override
     final HttpSession applySessionFixation(HttpServletRequest request) {
         // freshly generated or possibly a previous but anonymous session
         HttpSession session = request.getSession();
