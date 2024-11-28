@@ -72,7 +72,11 @@ class LoginNonceService {
     }
 
     DefaultSavedRequest removeCachedRequest(String nonce) {
-        return cachedRequests.remove(nonce)
+        if (nonce != null) {
+            return cachedRequests.remove(nonce)
+        } else {
+            return null
+        }
     }
 
     void setAuthenticationRequest(String nonce, AbstractSaml2AuthenticationRequest savedRequest) {
@@ -84,7 +88,11 @@ class LoginNonceService {
     }
 
     AbstractSaml2AuthenticationRequest removeAuthenticationRequest(String nonce) {
-        return authenticationRequests.remove(nonce)
+        if (nonce != null) {
+            return authenticationRequests.remove(nonce)
+        } else {
+            return null
+        }
     }
 
     /**

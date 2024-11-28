@@ -273,11 +273,6 @@ class LogoutNonceSaml2LogoutRequestFilter extends OncePerRequestFilter {
             return;
         }
 
-        /* MODIFICATIONS START */
-        logoutNonceService.cleanupResponse(response)
-        logoutNonceService.cleanupSession(httpSession)
-        /* MODIFICATIONS END */
-
         if (logoutResponse.getBinding() == Saml2MessageBinding.REDIRECT) {
             doRedirect(request, response, logoutResponse);
         }

@@ -272,13 +272,21 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             logoutRequestValidator(OpenSamlLogoutRequestValidator)
             logoutRequestResolver(OpenSaml4LogoutRequestResolver, ref('relyingPartyRegistrationRepositoryResolver'))
 
-            LogoutHandler[] logoutHandlers = [
-                new SecurityContextLogoutHandler(),
-                new LogoutSuccessEventPublishingLogoutHandler()
-            ].toArray(new LogoutHandler[2]);
+            securityContextLogoutHandler(SecurityContextLogoutHandler)
+            logoutNonceSecurityContextLogoutHandler(LogoutNonceSecurityContextLogoutHandler) {
+                logoutNonceService = ref("logoutNonceService")
+            }
+            logoutSuccessEventPublishingLogoutHandler(LogoutSuccessEventPublishingLogoutHandler)
+
+            samlLogoutHandlerFactory(LogoutHandlerListFactory,
+                ref('securityContextLogoutHandler'),
+                ref('logoutNonceSecurityContextLogoutHandler'),
+                ref('logoutSuccessEventPublishingLogoutHandler'))
+
+            samlLogoutHandlers(samlLogoutHandlerFactory: "getInstance")
 
             saml2LogoutRequestFilter(Saml2LogoutRequestFilter, ref('relyingPartyRegistrationRepositoryResolver'),
-                    ref('logoutRequestValidator'), ref('logoutResponseResolver'), logoutHandlers) {
+                    ref('logoutRequestValidator'), ref('logoutResponseResolver'), ref("samlLogoutHandlers")) {
                 logoutRequestMatcher = new AndRequestMatcher(
                     new AntPathRequestMatcher(logoutRequestUrl),
                     new ParameterRequestMatcher("SAMLRequest"))
@@ -303,7 +311,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 if (defaultIdpLogoutResponseUrl != null) {
                     // IDP -> SP communication
                     defaultIdpSaml2LogoutRequestFilter(Saml2LogoutRequestFilter, ref('relyingPartyRegistrationRepositoryResolver'),
-                            ref('logoutRequestValidator'), ref('logoutResponseResolver'), logoutHandlers) {
+                            ref('logoutRequestValidator'), ref('logoutResponseResolver'), ref("samlLogoutHandlers")) {
                         logoutRequestMatcher = new AndRequestMatcher(
                             new AntPathRequestMatcher(defaultIdpLogoutResponseUrl),
                             new ParameterRequestMatcher("SAMLRequest"))
@@ -313,7 +321,10 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                     if (logoutNonceEnabled) {
                         // IDP -> SP communication
                         defaultIdpSaml2LogoutRequestFilter(LogoutNonceSaml2LogoutRequestFilter, ref('relyingPartyRegistrationRepositoryResolver'),
-                                ref('logoutRequestValidator'), ref('logoutResponseResolver'), logoutHandlers) {
+                                ref('logoutRequestValidator'), ref('logoutResponseResolver'), ref("samlLogoutHandlers")) {
+
+                            logoutNonceService = ref('logoutNonceService')
+
                             logoutRequestMatcher = new AndRequestMatcher(
                                     new AntPathRequestMatcher(defaultIdpLogoutResponseUrl),
                                     new ParameterRequestMatcher("SAMLRequest"))
@@ -337,7 +348,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 logoutRequestRepository = ref('logoutRequestRepository')
             }
 
-            relyingPartyLogoutFilter(LogoutFilter, ref('logoutRequestSuccessHandler'), logoutHandlers) {
+            relyingPartyLogoutFilter(LogoutFilter, ref('logoutRequestSuccessHandler'), ref("samlLogoutHandlers")) {
                 logoutRequestMatcher = new AndRequestMatcher(
                     new AntPathRequestMatcher(logoutUrl),
                     new Saml2RequestMatcher())
@@ -387,7 +398,9 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 }
 
                 saml2LogoutRequestFilter(LogoutNonceSaml2LogoutRequestFilter, ref('relyingPartyRegistrationRepositoryResolver'),
-                    ref('logoutRequestValidator'), ref('logoutResponseResolver'), logoutHandlers) {
+                    ref('logoutRequestValidator'), ref('logoutResponseResolver'), ref("samlLogoutHandlers")) {
+
+                    logoutNonceService = ref('logoutNonceService')
 
                     logoutRequestMatcher = new AndRequestMatcher(
                         new AntPathRequestMatcher(logoutRequestUrl),
