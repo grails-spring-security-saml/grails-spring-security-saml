@@ -10,6 +10,7 @@ class LoginNonceRelayStateResolver implements Converter<HttpServletRequest, Stri
 
     @Override
     String convert(HttpServletRequest source) {
+        loginNonceService.prepareNonce(source.getSession())
         return loginNonceService.getSessionNonce(source.getSession())
     }
 }

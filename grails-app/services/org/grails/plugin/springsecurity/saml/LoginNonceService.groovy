@@ -2,6 +2,9 @@ package org.grails.plugin.springsecurity.saml
 
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseCookie
+import org.springframework.security.saml2.provider.service.authentication.AbstractSaml2AuthenticationRequest
+import org.springframework.security.saml2.provider.service.web.Saml2AuthenticationRequestRepository
+import org.springframework.security.web.savedrequest.DefaultSavedRequest
 
 import javax.servlet.http.Cookie
 import javax.servlet.http.HttpServletRequest
@@ -11,15 +14,17 @@ import java.util.concurrent.ConcurrentHashMap
 
 class LoginNonceService {
     public static final String ATTRIBUTE_NAME = "LoginNonce";
+    public static final String REQUEST_CACHE_ATTRIBUTE_NAME = "LoginNonce-CachedRequest";
     public static final String COOKIE_NAME = "LoginNonce";
 
-    ConcurrentHashMap<String, HttpSession> sessionByAttribute = new ConcurrentHashMap<>()
+    private ConcurrentHashMap<String, DefaultSavedRequest> cachedRequests = new ConcurrentHashMap<>()
+    private ConcurrentHashMap<String, AbstractSaml2AuthenticationRequest> authenticationRequests = new ConcurrentHashMap<>()
 
     /**
      * Generate a new nonce
      * @return
      */
-    def getNonce() {
+    String getNonce() {
         return UUID.randomUUID().toString()
     }
 
@@ -28,20 +33,58 @@ class LoginNonceService {
      * @param session
      * @return
      */
-    def getSessionNonce(HttpSession session) {
+    String getSessionNonce(HttpSession session) {
         return session.getAttribute(ATTRIBUTE_NAME)
     }
 
     /**
-     * Associate the given session with the nonce
+     * Store the to be cached request in the session first,
+     * so that it can be associated to the nonce at a later time
      * @param session
-     * @param nonce
+     * @return savedRequest
+     */
+    void prepareRequestCache(HttpSession session, DefaultSavedRequest savedRequest) {
+        session.setAttribute(REQUEST_CACHE_ATTRIBUTE_NAME, savedRequest)
+    }
+
+    /**
+     * Associate the given session with a new nonce
+     * @param session
      * @return
      */
-    def prepareSession(HttpSession session, String nonce) {
-        cleanupSession(session)
+    void prepareNonce(HttpSession session) {
+        def nonce = getNonce()
         session.setAttribute(ATTRIBUTE_NAME, nonce)
-        sessionByAttribute.put(nonce, session)
+
+        DefaultSavedRequest savedRequest = session.getAttribute(REQUEST_CACHE_ATTRIBUTE_NAME)
+        if (savedRequest != null) {
+            cachedRequests.put(nonce, savedRequest)
+        }
+        session.removeAttribute(REQUEST_CACHE_ATTRIBUTE_NAME)
+    }
+
+    void setCachedRequest(String nonce, DefaultSavedRequest savedRequest) {
+        cachedRequests.put(nonce, savedRequest)
+    }
+
+    DefaultSavedRequest getCachedRequest(String nonce) {
+        return cachedRequests.get(nonce)
+    }
+
+    DefaultSavedRequest removeCachedRequest(String nonce) {
+        return cachedRequests.remove(nonce)
+    }
+
+    void setAuthenticationRequest(String nonce, AbstractSaml2AuthenticationRequest savedRequest) {
+        authenticationRequests.put(nonce, savedRequest)
+    }
+
+    AbstractSaml2AuthenticationRequest getAuthenticationRequest(String nonce) {
+        return authenticationRequests.get(nonce)
+    }
+
+    AbstractSaml2AuthenticationRequest removeAuthenticationRequest(String nonce) {
+        return authenticationRequests.remove(nonce)
     }
 
     /**
@@ -94,38 +137,5 @@ class LoginNonceService {
             return null;
         }
         return cookie.getValue()
-    }
-
-    /**
-     * Retrieve an old session based on a nonce
-     * The retrieved session is tested for having been associated with this nonce
-     * @param nonce
-     * @return
-     */
-    def getSession(String nonce) {
-        if (nonce == null) {
-            return null
-        }
-        def session = sessionByAttribute.get(nonce)
-        if (session != null && session.getAttribute(ATTRIBUTE_NAME) == nonce) {
-            return session
-        } else {
-            return null
-        }
-    }
-
-    /**
-     * Remove the nonce association from this session and prevent the session from being retrieved in the future
-     * @param session
-     * @return
-     */
-    def cleanupSession(HttpSession session) {
-        def nonceAttribute = session.getAttribute(ATTRIBUTE_NAME)
-        session.removeAttribute(ATTRIBUTE_NAME)
-        if (nonceAttribute) {
-            sessionByAttribute.remove(nonceAttribute)
-        } else {
-            sessionByAttribute.removeAll {it.value == session }
-        }
     }
 }

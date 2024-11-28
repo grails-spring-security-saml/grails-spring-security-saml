@@ -19,6 +19,8 @@ import org.springframework.security.web.util.UrlUtils
 import org.springframework.security.web.util.matcher.AnyRequestMatcher
 import org.springframework.security.web.util.matcher.RequestMatcher
 
+import java.util.concurrent.ConcurrentHashMap
+
 class LoginNonceRequestCache implements RequestCache {
     static final String SAVED_REQUEST = "SPRING_SECURITY_SAVED_REQUEST";
 
@@ -47,37 +49,31 @@ class LoginNonceRequestCache implements RequestCache {
             return;
         }
         DefaultSavedRequest savedRequest = new DefaultSavedRequest(request, this.portResolver);
-        def loginNonce = loginNonceService.getCookieNonce(request)
-        HttpSession session = loginNonceService.getSession(loginNonce) ?: request.getSession(false)
-        if (this.createSessionAllowed || session != null) {
-            // Store the HTTP request itself. Used by
-            // AbstractAuthenticationProcessingFilter
-            // for redirection after successful authentication (SEC-29)
-            request.getSession().setAttribute(this.sessionAttrName, savedRequest);
-            if (this.logger.isDebugEnabled()) {
-                this.logger.debug(LogMessage.format("Saved request %s to session", savedRequest.getRedirectUrl()));
-            }
-        }
-        else {
-            this.logger.trace("Did not save request since there's no session and createSessionAllowed is false");
+        // this is called in sendStartAuthentication, when a protected resource is accessed
+        // and you are redirected to the authentication page instead, so that it can redirect you back
+        loginNonceService.prepareRequestCache(request.getSession(), savedRequest)
+        if (this.logger.isDebugEnabled()) {
+            this.logger.debug(LogMessage.format("Saved request %s to session", savedRequest.getRedirectUrl()));
         }
     }
 
     @Override
-    SavedRequest getRequest(HttpServletRequest currentRequest, HttpServletResponse response) {
-        def loginNonce = loginNonceService.getCookieNonce(currentRequest)
-        HttpSession session = loginNonceService.getSession(loginNonce) ?: currentRequest.getSession(false)
-        return (session != null) ? (SavedRequest) session.getAttribute(this.sessionAttrName) : null;
+    SavedRequest getRequest(HttpServletRequest request, HttpServletResponse response) {
+        def nonce = loginNonceService.getCookieNonce(request)
+        // check relayState
+        def relayStateNonce = request.getParameter("RelayState")
+        if (nonce == relayStateNonce) {
+            return loginNonceService.getCachedRequest(nonce)
+        } else {
+            throw new RuntimeException("$nonce != $relayStateNonce")
+            // return null
+        }
     }
 
     @Override
-    void removeRequest(HttpServletRequest currentRequest, HttpServletResponse response) {
-        def loginNonce = loginNonceService.getCookieNonce(currentRequest)
-        HttpSession session = loginNonceService.getSession(loginNonce) ?: currentRequest.getSession(false)
-        if (session != null) {
-            this.logger.trace("Removing DefaultSavedRequest from session if present");
-            session.removeAttribute(this.sessionAttrName);
-        }
+    void removeRequest(HttpServletRequest request, HttpServletResponse response) {
+        def nonce = loginNonceService.getCookieNonce(request)
+        loginNonceService.removeCachedRequest(nonce)
     }
 
     @Override
