@@ -1,6 +1,7 @@
 package org.grails.plugin.springsecurity.saml
 
 import org.springframework.security.web.savedrequest.DefaultSavedRequest
+import org.springframework.security.web.savedrequest.HttpSessionRequestCache
 import org.springframework.security.web.savedrequest.RequestCache
 import org.springframework.security.web.savedrequest.SavedRequest
 import org.springframework.security.web.savedrequest.SavedRequestAwareWrapper
@@ -36,6 +37,9 @@ class LoginNonceRequestCache implements RequestCache {
 
     private LoginNonceService loginNonceService;
 
+    // for local login
+    private HttpSessionRequestCache backupRequestCache = new HttpSessionRequestCache()
+
     /**
      * Stores the current request, provided the configuration properties allow it.
      */
@@ -55,6 +59,7 @@ class LoginNonceRequestCache implements RequestCache {
         if (this.logger.isDebugEnabled()) {
             this.logger.debug(LogMessage.format("Saved request %s to session", savedRequest.getRedirectUrl()));
         }
+        backupRequestCache.saveRequest(request, response)
     }
 
     @Override
@@ -62,11 +67,10 @@ class LoginNonceRequestCache implements RequestCache {
         def nonce = loginNonceService.getCookieNonce(request)
         // check relayState
         def relayStateNonce = request.getParameter("RelayState")
-        if (nonce == relayStateNonce) {
+        if (nonce != null && nonce == relayStateNonce) {
             return loginNonceService.getCachedRequest(nonce)
         } else {
-            throw new RuntimeException("$nonce != $relayStateNonce")
-            // return null
+            return backupRequestCache.saveRequest(request, response)
         }
     }
 
@@ -74,6 +78,7 @@ class LoginNonceRequestCache implements RequestCache {
     void removeRequest(HttpServletRequest request, HttpServletResponse response) {
         def nonce = loginNonceService.getCookieNonce(request)
         loginNonceService.removeCachedRequest(nonce)
+        backupRequestCache.removeRequest(request, response)
     }
 
     @Override
