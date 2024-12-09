@@ -1,5 +1,57 @@
 {% include_relative README.md %}
 
+### Changes in the Grails 6 version of the plugin
+
+The so called `spring-security-saml2-service-provider` has a glaring flaw.
+As of 2022, cookies are set to be `SameSite=Strict` or `SameStrict=Lax` by default, depending on your browser.
+Since SAML is a single sign on protocol, it is inherently cross site by design.
+The identity provider (IDP) and service provider (SP) do not have to be on the same origin.
+While this does not fundamentally break the plugin as it is still possible to initiate an SSO Login, 
+the spring service provider is unable to correlate the returning redirect to the originating session,
+which means that if you open a protected URL directly, e.g. through a bookmark, you be redirected into a newly created
+session on the index page. The quick and dirty solution is to set the JSESSIONID Cookie to `SameSite=None`,
+undoing the SameSite protection, however, this will undo the CSRF protection that SameSite cookies grant.
+
+What do the developers in charge of Spring Security have to say? Well, let's say they don't want to make it easy.
+
+```
+I'm not certain how to address this without creating another cookie, making me think that I might as well use the session cookie after all.
+```
+https://github.com/spring-projects/spring-security/issues/14013#issuecomment-1854823760
+
+Well, he started on the right track but arrived at exactly the wrong answer! We want the JSESSIONID token to be as secure as possible,
+hence `SameSite=Strict` or `SameStrict=Lax`. So what we want is another cookie or two, that are limited in scope
+so that they can only be used in the context of an SSO login and logout request.
+
+#### Enter the login nonce...
+
+```yaml
+grails:
+   plugins:
+      springsecurity:
+          saml:
+            loginNonce: true
+```
+
+What does this do? Before being sent off to the IDP, the SP will first generate a nonce and store it in the LoginNonce cookie and relayState and http session.
+Since this LoginNonce cookie is `SameSite=None`, it will be sent back along with the relay state.
+The two are checked to be identical before being used to retrieve the originating authentication request.
+
+```yaml
+grails:
+   plugins:
+      springsecurity:
+          saml:
+            logoutNonce: true
+```
+
+The LogoutNonce cookie is similar to the LoginNonce cookie, but with one caveat. Since single logout can be triggered from other service providers,
+there is no opportunity to set up the LogoutNonce cookie for a given logout attempt. Instead, it is set upon successful login,
+so that the SP is ready to accept a logout from the IDP at any time.
+On one hand this does mean that a CSRF to the logout button is possible, but on the other hand, this is the very essence of SSO logout.
+Any random service provider you have visited (including links to their logout buttons) can always log you out of your global session!
+This is true with or without the LogoutNonce!
+
 ### Changes in the Grails 5 version of the plugin
 
 The Spring Security Saml Plugin has been replaced by direct support for SAML in Spring Security Core. Some of the features of the old plugin have not been implemented and therefore have been removed in the latest version of this grails plugin.
@@ -126,7 +178,8 @@ All of these properties can be put in either `application.yml` or `application.g
 | active                          | boolean                                            | true                                                                                | States whether or not SAML is active                                                                                                                                                                                    |
 | afterLoginUrl                   | url string                                         | '/'                                                                                 | Redirection Url in your application upon successful login from the IDP                                                                                                                                                  |
 | afterLogoutUrl                  | url string                                         | '/'                                                                                 | Redirection Url in your application upon successful logout from the IDP                                                                                                                                                 |
-| loginNonce                      | boolean                                            | true                                                                                | Activates login nonce based session correlation to allow JSESSIONID to be set to SameSite=Strict. A nonce will be sent via cookie and relayState to retrieve the initiating session.                             |
+| loginNonce                      | boolean                                            | true                                                                                | Activates login nonce based session correlation to allow JSESSIONID to be set to SameSite=Strict. A nonce will be sent via cookie and relayState to retrieve the initiating session.                                    |
+| logoutNonce                     | boolean                                            | true                                                                                | Activates logout nonce based session correlation to allow JSESSIONID to be set to SameSite=Strict. The nonce will be set upon successful authentication.                                                                |
 | userAttributeMappings           | Map                                                | [username:'funkyUserNameFromIDP']                                                   | Allows Custom Mapping if both Application and IDP Attribute Names cannot be changed.                                                                                                                                    |
 | userGroupAttribute              | String Value                                       | 'memberOf'                                                                          | Corresponds to the Role Designator in the SAML Assertion from the IDP                                                                                                                                                   |
 | userGroupToRoleMapping          | Map [Spring Security Role: Saml Assertion Role]    | [ROLE_MY_APP_ROLE: 'CN=MYSAMLGROUP, OU=MyAppGroups, DC=myldap, DC=example, DC=com'] | This maps the Spring Security Roles in your application to the roles from the SAML Assertion.  Only roles in this Map will be resolved.                                                                                 |
@@ -272,6 +325,7 @@ grails:
             afterLoginUrl: '/'
             afterLogoutUrl: '/'
             loginNonce: false
+            logoutNonce: false
             userGroupAttribute = 'roles'
             autoCreate:
                 active: false # If you want the plugin to generate users in the DB as they are authenticated via SAML
