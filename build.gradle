@@ -1,29 +1,20 @@
-buildscript {
-    repositories {
-        mavenLocal()
-        maven { url "https://repo.grails.org/grails/core" }
-        maven { url "https://repo.maven.apache.org/maven2"}
-    }
-    dependencies {
-        classpath "org.grails:grails-gradle-plugin:$grailsGradlePluginVersion"
-        classpath "com.bertramlabs.plugins:asset-pipeline-gradle:3.4.4"
-        classpath "org.jfrog.buildinfo:build-info-extractor-gradle:4.28.3"
-        classpath "io.github.gradle-nexus:publish-plugin:1.0.0"
-    }
+plugins {
+    id "groovy"
+    id "war"
+    id "idea"
+    id "org.grails.grails-plugin"
+    id "application"
+    id "eclipse"
+
+    id "com.bertramlabs.asset-pipeline" version "4.3.0"
+    id 'org.grails.grails-gsp'
+    id 'signing'
+    id 'com.jfrog.artifactory' version "5.2.5"
+    id 'maven-publish'
+    id 'io.github.gradle-nexus.publish-plugin'
 }
 
-version "6.0.7"
-group "io.github.grails-spring-security-saml"
-
-apply plugin: 'com.jfrog.artifactory'
-apply plugin: 'eclipse'
-apply plugin: 'idea'
-apply plugin: 'org.grails.grails-plugin'
-apply plugin: 'maven-publish'
-apply plugin: 'com.bertramlabs.asset-pipeline'
-apply plugin: 'org.grails.grails-gsp'
-apply plugin: 'signing'
-apply plugin: 'io.github.gradle-nexus.publish-plugin'
+group = "io.github.grails-spring-security-saml"
 
 repositories {
     mavenLocal()
@@ -33,26 +24,30 @@ repositories {
 }
 
 configurations {
-    developmentOnly
-    runtimeClasspath {
-        extendsFrom developmentOnly
+    all {
     }
 }
 
 dependencies {
-    implementation "org.springframework.boot:spring-boot-starter-logging"
-    implementation "org.springframework.boot:spring-boot-autoconfigure"
-    implementation "org.grails:grails-core"
+    implementation("org.grails:grails-core")
+    implementation("org.grails:grails-logging")
+    implementation("org.grails:grails-plugin-databinding")
+    implementation("org.grails:grails-plugin-i18n")
+    implementation("org.grails:grails-plugin-interceptors")
+    implementation("org.grails:grails-plugin-rest")
+    implementation("org.grails:grails-plugin-services")
+    implementation("org.grails:grails-plugin-url-mappings")
+    implementation("org.grails:grails-web-boot")
+
+    implementation("org.grails.plugins:hibernate5")
+    implementation("org.hibernate:hibernate-core:5.6.15.Final")
+    implementation("org.springframework.boot:spring-boot-autoconfigure")
+    implementation("org.springframework.boot:spring-boot-starter-logging")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
+
     implementation "org.springframework.boot:spring-boot-starter-actuator"
     implementation "org.springframework.boot:spring-boot-starter-tomcat"
-    implementation "org.grails:grails-web-boot"
-    implementation "org.grails:grails-logging"
-    implementation "org.grails:grails-plugin-rest"
-    implementation "org.grails:grails-plugin-databinding"
-    implementation "org.grails:grails-plugin-i18n"
-    implementation "org.grails:grails-plugin-services"
-    implementation "org.grails:grails-plugin-url-mappings"
-    implementation "org.grails:grails-plugin-interceptors"
+
     implementation "org.grails.plugins:cache"
     implementation "org.grails.plugins:async"
     implementation "org.grails.plugins:scaffolding"
@@ -84,6 +79,18 @@ dependencies {
     implementation "joda-time:joda-time:2.9.7"
 }
 
+application {
+    mainClass.set("org.grails.plugin.springsecurity.saml.Application")
+}
+
+java {
+    sourceCompatibility = JavaVersion.toVersion("11")
+}
+
+tasks.withType(Test) {
+    useJUnitPlatform()
+}
+
 bootRun {
     jvmArgs(
         '-Dspring.output.ansi.enabled=always',
@@ -95,10 +102,6 @@ bootRun {
     systemProperty springProfilesActive, System.getProperty(springProfilesActive)
 }
 bootJar.enabled = false
-
-assets {
-    packagePlugin = true
-}
 
 ext."signing.keyId" = project.hasProperty("signing.keyId") ? project.getProperty('signing.keyId') : System.getenv('SIGNING_KEY_ID')
 ext."signing.password" = project.hasProperty("signing.password") ? project.getProperty('signing.password') : System.getenv('SIGNING_PASSPHRASE')
@@ -157,6 +160,7 @@ publishing {
        }
    }
 }
+
 // https://grails.org/blog/2021-04-07-publish-grails-plugin-to-maven-central.html
 nexusPublishing {
    repositories {
@@ -173,14 +177,14 @@ nexusPublishing {
    }
 }
 
-artifactory {
+/*artifactory {
     contextUrl = "https://grailsrepo.rz.tu-bs.de/artifactory/"
     publish {
         repository {
             repoKey = 'tubs-grails'
             username = System.getenv("GRAILSREPO_USER")
             password = System.getenv("GRAILSREPO_PASS")
-            maven = true
+            //maven = true
         }
         defaults {
             publications('maven')
@@ -191,7 +195,7 @@ artifactory {
             repoKey = 'tubs-grails'
             username = System.getenv("GRAILSREPO_USER")
             password = System.getenv("GRAILSREPO_PASS")
-            maven = true
+            //maven = true
         }
     }
-}
+}*/
