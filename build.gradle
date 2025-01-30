@@ -133,9 +133,9 @@ publishing {
 
            pom {
                name = 'Grails Spring Security SAML2.0 Plugin for Grails'
-               description = 'The Plugin basically creates a bridge from your Grails application configuration' + \
-                            'to both the Spring Security SAML service provider library and the Grails Spring Security Plugin.' + \
-                            'Instead of having to map all of the beans in your application, the plugin wires the SAML service provider' + \
+               description = 'The Plugin basically creates a bridge from your Grails application configuration ' + \
+                            'to both the Spring Security SAML service provider library and the Grails Spring Security Plugin. ' + \
+                            'Instead of having to map all of the beans in your application, the plugin wires the SAML service provider ' + \
                             'beans based on your application configuration.'
                url = 'https://github.com/grails-spring-security-saml/grails-spring-security-saml'
                licenses {

@@ -8,7 +8,7 @@ This plugin provides SAML 2.0 support for Grails 4, 5 and 6 applications. It was
 * Grails 3.3.x - Use Version 3.3.x of the plugin
 * Grails 4.0.x - Use Version 4.0.2 of the plugin
 * Grails 5.1.x - Use Version 5.1.0 of the plugin
-* Grails 6.x.x - Use Version 6.0.1 of the plugin
+* Grails 6.x.x - Use Version 6.0.8 of the plugin
 
 ### Installation
 Grails 4:
