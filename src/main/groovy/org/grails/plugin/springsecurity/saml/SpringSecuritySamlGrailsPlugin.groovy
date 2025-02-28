@@ -366,7 +366,9 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 }
 
                 // The login nonce transfers attributes from a previously authenticated session to the newly authenticated session
-                loginNonceService(LoginNonceService)
+                loginNonceService(LoginNonceService) {
+                    cookieExpiry = conf.saml.loginNonceExpiry ?: 30 * 60 // 30 minutes
+                }
                 authenticationRequestRepository(LoginNonceSaml2AuthenticationRequestRepository) {
                     loginNonceService = ref('loginNonceService')
                 }

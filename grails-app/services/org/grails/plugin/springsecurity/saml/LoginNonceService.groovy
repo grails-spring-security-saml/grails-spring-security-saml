@@ -20,6 +20,8 @@ class LoginNonceService {
     private ConcurrentHashMap<String, DefaultSavedRequest> cachedRequests = new ConcurrentHashMap<>()
     private ConcurrentHashMap<String, AbstractSaml2AuthenticationRequest> authenticationRequests = new ConcurrentHashMap<>()
 
+    Integer cookieExpiry = 30 * 60 // 30 minutes
+
     /**
      * Generate a new nonce
      * @return
@@ -68,7 +70,11 @@ class LoginNonceService {
     }
 
     DefaultSavedRequest getCachedRequest(String nonce) {
-        return cachedRequests.get(nonce)
+        if (nonce != null) {
+            return cachedRequests.get(nonce)
+        } else {
+            return null
+        }
     }
 
     DefaultSavedRequest removeCachedRequest(String nonce) {
@@ -102,7 +108,7 @@ class LoginNonceService {
      * @return
      */
     def prepareResponse(HttpServletResponse response, String nonce) {
-        def cookie = createNonceCookie(nonce, 60)
+        def cookie = createNonceCookie(nonce, cookieExpiry)
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString())
     }
 

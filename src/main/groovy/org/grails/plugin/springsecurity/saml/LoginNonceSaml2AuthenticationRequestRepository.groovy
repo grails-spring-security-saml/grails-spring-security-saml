@@ -1,16 +1,13 @@
 package org.grails.plugin.springsecurity.saml
 
-import org.springframework.security.saml2.provider.service.web.Saml2AuthenticationRequestRepository
-import org.springframework.security.web.savedrequest.DefaultSavedRequest
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
-
+import groovy.util.logging.Slf4j
 import org.springframework.security.saml2.provider.service.authentication.AbstractSaml2AuthenticationRequest
+import org.springframework.security.saml2.provider.service.web.Saml2AuthenticationRequestRepository
 
-import java.util.concurrent.ConcurrentHashMap;
+import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
 
+@Slf4j('logger')
 class LoginNonceSaml2AuthenticationRequestRepository
         implements Saml2AuthenticationRequestRepository<AbstractSaml2AuthenticationRequest> {
 
@@ -25,7 +22,8 @@ class LoginNonceSaml2AuthenticationRequestRepository
         if (loginNonce == relayStateNonce) {
             return loginNonceService.getAuthenticationRequest(loginNonce)
         } else {
-            throw new RuntimeException("$loginNonce != $relayStateNonce")
+            logger.warn("The login nonce \"$loginNonce\" did not match the relayNonce \"$relayStateNonce\". " +
+                    "This was most likely caused by an expiry of the login nonce cookie.")
             return null
         }
     }
