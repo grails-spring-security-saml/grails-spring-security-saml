@@ -44,4 +44,12 @@ repositories {
 }
 ```
 
+plus
+
+```
+implementation 'org.springframework.security:spring-security-saml2-service-provider:5.8.15'
+```
+
+to prevent the downgrade of the spring-security-saml2-service-provider forced by the grails gradle plugins down to 5.7.x.
+
 See the [documentation page](https://jeffwils.github.io/grails-spring-security-saml/) and index.md (for Grails 5 and 6) for more information.
