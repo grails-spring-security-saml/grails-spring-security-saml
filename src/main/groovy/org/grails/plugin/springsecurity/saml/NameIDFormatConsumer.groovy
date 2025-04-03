@@ -1,7 +1,6 @@
 package org.grails.plugin.springsecurity.saml
 
-import org.opensaml.saml.saml2.core.LogoutRequest
-import org.opensaml.saml.saml2.core.NameID
+
 import org.springframework.security.saml2.provider.service.web.authentication.logout.OpenSaml4LogoutRequestResolver
 
 import java.util.function.Consumer
