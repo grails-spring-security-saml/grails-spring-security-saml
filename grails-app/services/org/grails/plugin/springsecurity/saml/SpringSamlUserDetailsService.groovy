@@ -79,22 +79,8 @@ class SpringSamlUserDetailsService extends GormUserDetailsService {
                 logger.debug("User - id ${user?.id}")
                 def userDetails = createUserDetails(user, grantedAuthorities)
                 logger.debug("User Details ${userDetails.toString()}")
-                if(userDetails instanceof SamlUserDetails) {
-                    def samlAttributes = [:]
-                    samlUserAttributeMappings.each { key, value ->
-                        try {
-                            samlAttributes."$key" = [user."$key"]
-                        } catch(MissingPropertyException e) {
-                            logger.warn("Failed to get SAML attribute '$key' from ${user.getClass()}. Add the SAML attribute to your User domain class.")
-                            logger.error "Error: ${e.message}", e
-                            def samlValue = principal.getAttribute(value)
-                            if (samlValue) {
-                                samlAttributes."$key" = samlValue
-                            }
-                        }
-                    }
-                    userDetails.setAttributes(samlAttributes)
-                }
+
+                finalizeUserDetails(userDetails, user, principal)
 
                 return userDetails
             } else {
@@ -290,6 +276,30 @@ class SpringSamlUserDetailsService extends GormUserDetailsService {
         logger.debug("Loaded UserClass: ${userClass}")
 
         userClass
+    }
+    
+    protected void finalizeUserDetails(UserDetails userDetails, user, Saml2AuthenticatedPrincipal principal) {
+        if (userDetails instanceof SamlUserDetails) {
+            def samlUserDetails = (SamlUserDetails) userDetails
+            def samlAttributes = [:]
+            samlUserAttributeMappings.each { key, value ->
+                try {
+                    samlAttributes."$key" = [user."$key"]
+                } catch(MissingPropertyException e) {
+                    logger.warn("Failed to get SAML attribute '$key' from ${user.getClass()}. Add the SAML attribute to your User domain class.")
+                    logger.error "Error: ${e.message}", e
+                    def samlValue = principal.getAttribute(value)
+                    if (samlValue) {
+                        samlAttributes."$key" = samlValue
+                    }
+                }
+            }
+            samlUserDetails.setAttributes(samlAttributes)
+            samlUserDetails.name = principal.name
+            samlUserDetails.relyingPartyRegistrationId = principal.relyingPartyRegistrationId
+            samlUserDetails.getSessionIndexes().clear()
+            samlUserDetails.getSessionIndexes().addAll(principal.getSessionIndexes())
+        }
     }
 
     protected UserDetails createUserDetails(user, Collection<GrantedAuthority> authorities) {

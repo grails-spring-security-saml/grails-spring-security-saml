@@ -20,8 +20,6 @@ public class SamlResponseAuthenticationConverter implements Converter<ResponseTo
             .convert(responseToken)
         Saml2AuthenticatedPrincipal principal = (Saml2AuthenticatedPrincipal)authentication.principal
         UserDetails userDetails = userDetailsService.loadUserBySAML(principal)
-        userDetails.setName(principal.name)
-        userDetails.relyingPartyRegistrationId = principal.relyingPartyRegistrationId
         def customAuthentication = new NamedSaml2Authentication(principal.name,
             userDetails, authentication.saml2Response, getEntitlements(userDetails))
         customAuthentication.setDetails(userDetails)

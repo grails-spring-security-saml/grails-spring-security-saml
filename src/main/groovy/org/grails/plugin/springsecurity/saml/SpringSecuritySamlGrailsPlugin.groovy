@@ -272,7 +272,10 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
 
             logoutRequestRepository(HttpSessionLogoutRequestRepository)
             logoutRequestValidator(OpenSamlLogoutRequestValidator)
-            logoutRequestResolver(OpenSaml4LogoutRequestResolver, ref('relyingPartyRegistrationRepositoryResolver'))
+            nameIDFormatConsumer(NameIDFormatConsumer)
+            logoutRequestResolver(OpenSaml4LogoutRequestResolver, ref('relyingPartyRegistrationRepositoryResolver')) {
+                parametersConsumer = ref('nameIDFormatConsumer')
+            }
 
             securityContextLogoutHandler(SecurityContextLogoutHandler)
             logoutNonceSecurityContextLogoutHandler(LogoutNonceSecurityContextLogoutHandler) {
@@ -471,7 +474,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
         String relyingPartyEntityId = conf.saml.metadata.sp.defaults.entityID ?: "{baseUrl}/saml2/service-provider-metadata/{registrationId}"
         String assertionConsumerServiceLocation = conf.saml.metadata.sp.defaults.assertionConsumerService ?: "{baseUrl}/login/saml2/sso/{registrationId}"
         String relyingSingleLogoutServiceLocation = conf.saml.metadata.sp.defaults.singleLogoutService ?: "{baseUrl}/logout/saml2/sso/{registrationId}"
-
+        String nameIdFormat = conf.saml.metadata.sp.defaults.nameIdFormat
         String signingKey = conf.saml.metadata.sp.defaults.signingKey
 
         Saml2X509Credential relyingPartySigningCredential
@@ -523,7 +526,11 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 "and 'grails.plugin.springsecurity.saml.keyManager.certificateFile'.")
         }
 
-        return RelyingPartyRegistrations.fromMetadataLocation(metadataLocation)
+        def metadataBuilder = RelyingPartyRegistrations.fromMetadataLocation(metadataLocation)
+        if (nameIdFormat) {
+            metadataBuilder.nameIdFormat(nameIdFormat)
+        }
+        return metadataBuilder
             .registrationId(registrationId)
             .entityId(relyingPartyEntityId)
             .assertionConsumerServiceLocation(assertionConsumerServiceLocation)

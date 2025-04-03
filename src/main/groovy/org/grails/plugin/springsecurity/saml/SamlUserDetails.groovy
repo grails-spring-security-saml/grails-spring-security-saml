@@ -20,6 +20,8 @@ class SamlUserDetails extends GrailsUser implements Saml2AuthenticatedPrincipal,
 
     private String registrationId
 
+    private List<String> sessionIndices = new ArrayList<>()
+
     SamlUserDetails(String username, String password, boolean enabled,
                 boolean accountNonExpired, boolean credentialsNonExpired,
                 boolean accountNonLocked,
@@ -40,7 +42,7 @@ class SamlUserDetails extends GrailsUser implements Saml2AuthenticatedPrincipal,
 
     def getProperty(String name) {
         List<Object> attribute = attributes[name]
-        if(attributes.containsKey(name) && !hasProperty(name) && !attribute.isEmpty()) {
+        if (attributes.containsKey(name) && !hasProperty(name) && !attribute.isEmpty()) {
             return attribute[0]
         }
         return metaClass.getProperty(this, name)
@@ -68,5 +70,9 @@ class SamlUserDetails extends GrailsUser implements Saml2AuthenticatedPrincipal,
     public void setRelyingPartyRegistrationId(String registrationId) {
         Assert.notNull(registrationId, "relyingPartyRegistrationId cannot be null");
         this.registrationId = registrationId;
+    }
+
+    public List<String> getSessionIndexes() {
+        return sessionIndices
     }
 }
