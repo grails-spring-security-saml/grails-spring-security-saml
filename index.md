@@ -67,6 +67,7 @@ grails:
             metadata:
                 sp:
                     defaults:
+                        alias:
                         local:
                         securityProfile:
                         encryptionKey:
@@ -87,7 +88,7 @@ Finally, the Service Provider needs to include the certificate specified by `gra
 
 The generated metadata files are available under `/saml2/service-provider-metadata/{registrationId}`.
 
-Specifying both `assertionConsumerService` and `defaultIdp` will create a custom Filter at the Path `assertionConsumerService` which can only login to the IDP specified in `defaultIdp`. This is intended to allow an existing application to upgrade to the latest version of this plugin without having to re-register its metadata if all it does is integrate a single service provider with a single identity provider.
+Specifying both `assertionConsumerService` and `defaultIdp` will create a custom Filter at the Path `assertionConsumerService` which can only login to the IDP specified in `defaultIdp` (restriction lifted since 6.0.11). This is intended to allow an existing application to upgrade to the latest version of this plugin without having to re-register its metadata if all it does is integrate a single service provider with a single identity provider.
 
 ```yaml
 grails:

@@ -182,20 +182,33 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
 
             relyingPartyRegistrationRepositoryResolver(DefaultRelyingPartyRegistrationResolver, ref('relyingPartyRegistrationRepository'))
 
+            def defaultRegistrationId = registrations.min { it.assertingPartyDetails.entityId }.registrationId
             if (conf.saml.metadata.defaultIdp) {
-                println "Activating default registration ${conf.saml.metadata.defaultIdp}"
-                def defaultRegistrationId = (registrations
-                    .find{ it.assertingPartyDetails.entityId == conf.saml.metadata.defaultIdp }?.registrationId
-                    ?: conf.saml.metadata.defaultIdp)
+                defaultRegistrationId = (registrations
+                    .find{ it.assertingPartyDetails.entityId == conf.saml.metadata.defaultIdp }?.registrationId)
 
-                // force the use of registrationId specified by 'defaultIdp'
-                defaultIdpRegistrationRepositoryResolver(DefaultRegistrationResolver) {
-                    relyingPartyRegistrationResolver = ref('relyingPartyRegistrationRepositoryResolver')
-                    defaultRegistration = defaultRegistrationId
+                if (defaultRegistrationId == null) {
+                    throw new IllegalArgumentException("defaultRegistrationId is null even though a defaultIdp has been configured. " +
+                        "Please check \"grails.plugin.springsecurity.saml.metadata.defaultIdp\" and the entityId of the IDP metadata " +
+                        "configured in \"grails.plugin.springsecurity.saml.metadata.providers.{registrationId} = 'idp.xml' \" for errors.")
                 }
             }
 
-            if (conf.saml.metadata.defaultIdp && conf.saml.metadata.sp.defaults.assertionConsumerService) {
+            if (defaultRegistrationId == null) {
+                throw new IllegalArgumentException("defaultRegistrationId is null.")
+            }
+
+            println "Choosing ${defaultRegistrationId} as default registration"
+
+            // retrieve the registrationId via the authenticationRequestRepository
+            // if no request found, force the use of registrationId specified by 'defaultIdp'
+            defaultIdpRegistrationRepositoryResolver(DefaultRegistrationResolver) {
+                relyingPartyRegistrationResolver = ref('relyingPartyRegistrationRepositoryResolver')
+                authenticationRequestRepository = ref('authenticationRequestRepository')
+                defaultRegistration = defaultRegistrationId
+            }
+
+            if (conf.saml.metadata.sp.defaults.assertionConsumerService) {
                 String loginProcessingUrl = null
                 try {
                     loginProcessingUrl = new URL(conf.saml.metadata.sp.defaults.assertionConsumerService).getPath()
@@ -223,6 +236,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 springSecurityService = ref('springSecurityService')
                 webExpressionHandler = ref('webExpressionHandler')
                 webInvocationPrivilegeEvaluator = ref('webInvocationPrivilegeEvaluator')
+                defaultIdpRegistrationRepositoryResolver = ref('defaultIdpRegistrationRepositoryResolver')
                 grailsApplication = grailsApplication
             }
 
@@ -305,7 +319,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 logoutRequestRepository = ref('logoutRequestRepository')
             }
 
-            if (conf.saml.metadata.defaultIdp && conf.saml.metadata.sp.defaults.singleLogoutService) {
+            if (conf.saml.metadata.sp.defaults.singleLogoutService) {
                 def singleLogoutService = conf.saml.metadata.sp.defaults.singleLogoutService
                 String defaultIdpLogoutResponseUrl = null
                 try {
