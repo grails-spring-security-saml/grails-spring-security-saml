@@ -11,7 +11,7 @@ import org.springframework.security.saml2.provider.service.registration.Saml2Mes
 import spock.lang.Shared
 import spock.lang.Specification
 
-import javax.servlet.http.Cookie
+import jakarta.servlet.http.Cookie
 import java.security.KeyFactory
 import java.security.PrivateKey
 import java.security.cert.CertificateFactory

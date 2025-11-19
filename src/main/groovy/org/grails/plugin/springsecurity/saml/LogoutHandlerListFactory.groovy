@@ -1,7 +1,5 @@
 package org.grails.plugin.springsecurity.saml
 
-import org.springframework.beans.factory.FactoryBean
-
 class LogoutHandlerListFactory {
     Object[] beans
 

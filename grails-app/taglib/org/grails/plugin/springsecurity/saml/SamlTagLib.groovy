@@ -1,11 +1,9 @@
 package org.grails.plugin.springsecurity.saml
 
-import grails.plugin.springsecurity.SecurityTagLib
-import grails.util.Holders
 import grails.core.GrailsApplication
-import org.springframework.security.saml2.provider.service.registration.InMemoryRelyingPartyRegistrationRepository
-import org.springframework.security.core.context.SecurityContextHolder
+import grails.plugin.springsecurity.SecurityTagLib
 import org.springframework.security.core.Authentication
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.saml2.provider.service.authentication.Saml2Authentication
 
 class SamlTagLib extends SecurityTagLib {

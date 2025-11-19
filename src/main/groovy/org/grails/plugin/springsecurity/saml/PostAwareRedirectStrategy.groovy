@@ -2,10 +2,8 @@ package org.grails.plugin.springsecurity.saml
 
 import org.springframework.core.log.LogMessage
 import org.springframework.security.web.DefaultRedirectStrategy
-
-import javax.servlet.http.HttpServletRequest
-import javax.servlet.http.HttpServletResponse
-
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 
 class PostAwareRedirectStrategy extends DefaultRedirectStrategy {
 

@@ -32,7 +32,7 @@ import org.springframework.security.web.util.matcher.AndRequestMatcher
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher
 import org.springframework.security.web.util.matcher.RequestMatcher
 
-import javax.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletRequest
 import java.security.KeyStore
 import java.security.KeyStore.PasswordProtection
 import java.security.KeyStore.PrivateKeyEntry
@@ -204,7 +204,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             // if no request found, force the use of registrationId specified by 'defaultIdp'
             defaultIdpRegistrationRepositoryResolver(DefaultRegistrationResolver) {
                 relyingPartyRegistrationResolver = ref('relyingPartyRegistrationRepositoryResolver')
-                authenticationRequestRepository = ref('authenticationRequestRepository')
+                // authenticationRequestRepository = ref('authenticationRequestRepository')
                 defaultRegistration = defaultRegistrationId
             }
 
@@ -240,7 +240,7 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
                 grailsApplication = grailsApplication
             }
 
-            contextResolver(DefaultSaml2AuthenticationRequestContextResolver, ref('relyingPartyRegistrationRepositoryResolver'))
+            // contextResolver(DefaultSaml2AuthenticationRequestContextResolver, ref('relyingPartyRegistrationRepositoryResolver'))
             authenticationRequestRepository(HttpSessionSaml2AuthenticationRequestRepository)
             authenticationConverter(Saml2AuthenticationTokenConverter, ref('relyingPartyRegistrationRepositoryResolver')) {
                 authenticationRequestRepository = ref('authenticationRequestRepository')

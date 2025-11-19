@@ -3,13 +3,12 @@ package org.grails.plugin.springsecurity.saml
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseCookie
 import org.springframework.security.saml2.provider.service.authentication.AbstractSaml2AuthenticationRequest
-import org.springframework.security.saml2.provider.service.web.Saml2AuthenticationRequestRepository
 import org.springframework.security.web.savedrequest.DefaultSavedRequest
 
-import javax.servlet.http.Cookie
-import javax.servlet.http.HttpServletRequest
-import javax.servlet.http.HttpServletResponse
-import javax.servlet.http.HttpSession
+import jakarta.servlet.http.Cookie
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
+import jakarta.servlet.http.HttpSession
 import java.util.concurrent.ConcurrentHashMap
 
 class LoginNonceService {

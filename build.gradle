@@ -1,24 +1,46 @@
-plugins {
-    id "groovy"
-    id "war"
-    id "idea"
-    id "org.grails.grails-plugin"
-    id "application"
-    id "eclipse"
-
-    id "com.bertramlabs.asset-pipeline" version "4.3.0"
-    id 'org.grails.grails-gsp'
-    id 'signing'
-    id 'com.jfrog.artifactory' version "5.2.5"
-    id 'maven-publish'
-    id 'io.github.gradle-nexus.publish-plugin'
+buildscript {
+    repositories {
+        mavenCentral()
+        maven { url "https://repo.grails.org/grails/restricted" }
+        maven {
+            url = 'https://repository.apache.org/content/groups/snapshots'
+            content {
+                includeVersionByRegex('org[.]apache[.](grails|groovy).*', '.*', '.*-SNAPSHOT')
+            }
+        }
+    }
+    dependencies {
+        classpath platform("org.apache.grails:grails-bom:$grailsVersion")
+        classpath "org.apache.grails:grails-gradle-plugins"
+        classpath "cloud.wondrify:asset-pipeline-gradle"
+        classpath "org.jfrog.buildinfo:build-info-extractor-gradle:4.28.3"
+    }
 }
+
+apply plugin:"application"
+apply plugin:"com.jfrog.artifactory"
+apply plugin:"maven-publish"
+apply plugin:"eclipse"
+apply plugin:"idea"
+apply plugin:"org.apache.grails.gradle.grails-plugin"
+apply plugin:"cloud.wondrify.asset-pipeline"
+apply plugin:"org.apache.grails.gradle.grails-gsp"
+apply plugin:"war"
+apply plugin:'signing'
+apply plugin:'com.jfrog.artifactory'
+apply plugin:'io.github.gradle-nexus.publish-plugin'
 
 group = "io.github.grails-spring-security-saml"
 
 repositories {
-    mavenLocal()
-    maven { url "https://repo.grails.org/grails/core" }
+    mavenCentral()
+    maven { url "https://repo.grails.org/grails/restricted" }
+    maven {
+        url = 'https://repository.apache.org/content/groups/snapshots'
+        content {
+            includeVersionByRegex('org[.]apache[.](grails|groovy).*', '.*', '.*-SNAPSHOT')
+        }
+    }
     maven { url "https://repo1.maven.org/maven2/"}
     maven { url "https://build.shibboleth.net/maven/releases/"}
 }
@@ -29,63 +51,51 @@ configurations {
 }
 
 dependencies {
-    implementation("org.grails:grails-core")
-    implementation("org.grails:grails-logging")
-    implementation("org.grails:grails-plugin-databinding")
-    implementation("org.grails:grails-plugin-i18n")
-    implementation("org.grails:grails-plugin-interceptors")
-    implementation("org.grails:grails-plugin-rest")
-    implementation("org.grails:grails-plugin-services")
-    implementation("org.grails:grails-plugin-url-mappings")
-    implementation("org.grails:grails-web-boot")
+    developmentOnly("org.springframework.boot:spring-boot-devtools")
+    console "org.apache.grails:grails-console"
+    implementation platform("org.apache.grails:grails-bom:$grailsVersion")
 
-    //implementation("org.grails.plugins:hibernate5")
-    //implementation("org.hibernate:hibernate-core:5.6.15.Final")
-    implementation("org.springframework.boot:spring-boot-autoconfigure")
-    implementation("org.springframework.boot:spring-boot-starter-logging")
-    implementation("org.springframework.boot:spring-boot-starter-validation")
-
+    implementation "org.springframework.boot:spring-boot-starter-logging"
+    implementation "org.springframework.boot:spring-boot-starter-validation"
+    implementation "org.springframework.boot:spring-boot-autoconfigure"
+    implementation "org.apache.grails:grails-core"
     implementation "org.springframework.boot:spring-boot-starter-actuator"
     implementation "org.springframework.boot:spring-boot-starter-tomcat"
+    implementation "org.apache.grails:grails-web-boot"
+    implementation "org.apache.grails:grails-logging"
+    // implementation "org.apache.grails:grails-plugin-rest"
+    implementation "org.apache.grails:grails-databinding"
+    implementation "org.apache.grails:grails-services"
+    implementation "org.apache.grails:grails-url-mappings"
+    implementation "org.apache.grails:grails-interceptors"
+    implementation "org.apache.grails:grails-cache"
+    implementation "org.apache.grails:grails-scaffolding"
+    implementation "org.apache.grails:grails-gsp"
 
-    implementation "org.grails.plugins:cache"
-    implementation "org.grails.plugins:async"
-    implementation "org.grails.plugins:scaffolding"
-    implementation "org.grails.plugins:gsp"
-
-    implementation 'org.grails.plugins:spring-security-core:6.1.2'
-    implementation 'org.springframework.security:spring-security-saml2-service-provider:5.8.15'
+    implementation 'org.apache.grails:grails-spring-security:7.0.0'
+    implementation 'org.springframework.security:spring-security-saml2-service-provider'
     implementation 'org.opensaml:opensaml-core:4.3.2'
     implementation 'org.opensaml:opensaml-saml-api:4.3.2'
     implementation 'org.opensaml:opensaml-saml-impl:4.3.2'
 
-    console "org.grails:grails-console"
-    profile "org.grails.profiles:web-plugin"
-    implementation "org.grails:grails-plugin-services"
-    runtimeOnly "com.bertramlabs.plugins:asset-pipeline-gradle:3.4.4"
-    testCompileOnly "org.grails:grails-gorm-testing-support"
-    //testCompileOnly "org.grails:grails-plugin-testing"
-    testCompileOnly "org.grails:grails-web-testing-support"
-    testCompileOnly "org.mockito:mockito-core"
-    testRuntimeOnly 'com.h2database:h2'
-    testRuntimeOnly 'com.zaxxer:HikariCP:2.7.4'
+    integrationTestImplementation testFixtures("org.apache.grails:grails-geb")
+    profile "org.apache.grails.profiles:web"
 
-    developmentOnly("org.springframework.boot:spring-boot-devtools")
-
-    implementation 'javax.servlet:javax.servlet-api:3.1.0'
-
-    implementation "org.grails:grails-console"
-
-    implementation "joda-time:joda-time:2.9.7"
+    runtimeOnly "cloud.wondrify:asset-pipeline-grails"
+    testAndDevelopmentOnly "org.webjars.npm:bootstrap"
+    testAndDevelopmentOnly "org.webjars.npm:bootstrap-icons"
+    testAndDevelopmentOnly "org.webjars.npm:jquery"
+    testImplementation "org.apache.grails:grails-testing-support-datamapping"
+    testImplementation "org.spockframework:spock-core"
+    testImplementation "org.apache.grails:grails-testing-support-web"
+    implementation "joda-time:joda-time:2.14.0"
 }
 
 application {
     mainClass.set("org.grails.plugin.springsecurity.saml.Application")
 }
 
-java {
-    sourceCompatibility = JavaVersion.toVersion("11")
-}
+compileJava.options.release = 17
 
 tasks.withType(Test) {
     useJUnitPlatform()
@@ -120,6 +130,11 @@ tasks.withType(Sign) {
    onlyIf { isReleaseVersion }
 }
 
+java {
+    withSourcesJar()   // creates `sourcesJar` task
+    withJavadocJar()   // creates `javadocJar` task
+}
+
 publishing {
    publications {
        maven(MavenPublication) {
@@ -128,8 +143,6 @@ publishing {
            version = project.version
 
            from components.java
-           artifact sourcesJar
-           artifact javadocJar
 
            pom {
                name = 'Grails Spring Security SAML2.0 Plugin for Grails'

@@ -4,8 +4,8 @@ import groovy.util.logging.Slf4j
 import org.springframework.security.saml2.provider.service.authentication.AbstractSaml2AuthenticationRequest
 import org.springframework.security.saml2.provider.service.web.Saml2AuthenticationRequestRepository
 
-import javax.servlet.http.HttpServletRequest
-import javax.servlet.http.HttpServletResponse
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 
 @Slf4j('logger')
 class LoginNonceSaml2AuthenticationRequestRepository
@@ -51,5 +51,4 @@ class LoginNonceSaml2AuthenticationRequestRepository
         loginNonceService.cleanupResponse(response, nonce)
         return loginNonceService.removeAuthenticationRequest(nonce)
     }
-
 }

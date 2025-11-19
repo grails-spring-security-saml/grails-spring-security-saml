@@ -15,18 +15,15 @@
 package org.grails.plugin.springsecurity.saml
 
 import grails.gorm.transactions.Transactional
-
+import grails.plugin.springsecurity.SpringSecurityUtils
 import grails.plugin.springsecurity.userdetails.GormUserDetailsService
 import groovy.util.logging.Slf4j
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
+import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal
-import grails.plugin.springsecurity.SpringSecurityUtils
-import org.springframework.security.core.userdetails.UserDetails
-import groovy.lang.MissingPropertyException
-
 /**
  * A {@link GormUserDetailsService} extension to read attributes from a LDAP-backed
  * SAML identity provider. It also reads roles from database

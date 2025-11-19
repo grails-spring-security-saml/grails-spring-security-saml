@@ -25,9 +25,9 @@ import org.springframework.security.saml2.provider.service.authentication.logout
 import org.springframework.security.saml2.provider.service.web.authentication.logout.Saml2LogoutRequestRepository
 import org.springframework.util.Assert
 
-import javax.servlet.http.HttpServletRequest
-import javax.servlet.http.HttpServletResponse
-import javax.servlet.http.HttpSession
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
+import jakarta.servlet.http.HttpSession
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 

@@ -1,6 +1,6 @@
 package org.grails.plugin.springsecurity.saml
 
-import javax.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletRequest
 import org.springframework.core.convert.converter.Converter
 
 // 	private Converter<HttpServletRequest, String> relayStateResolver = (request) -> UUID.randomUUID().toString();

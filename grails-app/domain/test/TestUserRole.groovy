@@ -15,9 +15,7 @@
 package test
 
 import grails.gorm.DetachedCriteria
-import org.apache.commons.lang.builder.HashCodeBuilder
-
-
+import org.apache.commons.lang3.builder.HashCodeBuilder
 
 class TestUserRole implements Serializable {
 

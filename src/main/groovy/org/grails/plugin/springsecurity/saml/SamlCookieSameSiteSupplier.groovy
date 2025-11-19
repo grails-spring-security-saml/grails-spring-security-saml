@@ -8,7 +8,7 @@ class SamlCookieSameSiteSupplier implements CookieSameSiteSupplier {
     //private static final String NAME = Authentication.class.getName();
 
     @Override
-    Cookie.SameSite getSameSite(javax.servlet.http.Cookie cookie) {
+    Cookie.SameSite getSameSite(jakarta.servlet.http.Cookie cookie) {
         if (ObjectUtils.nullSafeEquals(cookie.getName(), "JSESSIONID")) {
             /*RequestAttributes attributes = RequestContextHolder.currentRequestAttributes()
             Authentication authentication = (Authentication) attributes.getAttribute(NAME, RequestAttributes.SCOPE_REQUEST)

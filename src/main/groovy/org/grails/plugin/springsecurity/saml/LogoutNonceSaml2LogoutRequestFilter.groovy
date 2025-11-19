@@ -1,5 +1,10 @@
 package org.grails.plugin.springsecurity.saml
 
+import jakarta.servlet.FilterChain
+import jakarta.servlet.ServletException
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
+import jakarta.servlet.http.HttpSession
 import org.apache.commons.logging.Log
 import org.apache.commons.logging.LogFactory
 import org.springframework.core.log.LogMessage
@@ -10,78 +15,23 @@ import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.core.context.SecurityContextHolderStrategy
 import org.springframework.security.saml2.core.Saml2ParameterNames
 import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal
-import org.springframework.security.saml2.provider.service.authentication.logout.Saml2LogoutRequest
-import org.springframework.security.saml2.provider.service.authentication.logout.Saml2LogoutRequestValidator
-import org.springframework.security.saml2.provider.service.authentication.logout.Saml2LogoutRequestValidatorParameters
-import org.springframework.security.saml2.provider.service.authentication.logout.Saml2LogoutResponse
-import org.springframework.security.saml2.provider.service.authentication.logout.Saml2LogoutValidatorResult
+import org.springframework.security.saml2.provider.service.authentication.logout.*
 import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration
 import org.springframework.security.saml2.provider.service.registration.Saml2MessageBinding
 import org.springframework.security.saml2.provider.service.web.RelyingPartyRegistrationResolver
-import org.springframework.security.saml2.provider.service.web.authentication.logout.Saml2LogoutRequestFilter
 import org.springframework.security.saml2.provider.service.web.authentication.logout.Saml2LogoutResponseResolver
 import org.springframework.security.saml2.provider.service.web.authentication.logout.Saml2MessageBindingUtils
 import org.springframework.security.web.DefaultRedirectStrategy
 import org.springframework.security.web.RedirectStrategy
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler
 import org.springframework.security.web.authentication.logout.CompositeLogoutHandler
 import org.springframework.security.web.authentication.logout.LogoutHandler
-import org.springframework.security.web.context.HttpRequestResponseHolder
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher
 import org.springframework.security.web.util.matcher.RequestMatcher
 import org.springframework.util.Assert
 import org.springframework.util.StringUtils
-import org.springframework.web.filter.GenericFilterBean
 import org.springframework.web.filter.OncePerRequestFilter
 import org.springframework.web.util.HtmlUtils
 import org.springframework.web.util.UriComponentsBuilder
-
-import javax.servlet.DispatcherType
-import javax.servlet.FilterChain
-import javax.servlet.ServletException
-import javax.servlet.ServletRequest
-import javax.servlet.ServletResponse
-import javax.servlet.http.HttpServletRequest
-import javax.servlet.http.HttpServletResponse
-import javax.servlet.http.HttpSession
-import java.io.IOException;
-
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import org.springframework.core.log.LogMessage;
-import org.springframework.http.MediaType;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.context.SecurityContextHolderStrategy;
-import org.springframework.security.saml2.core.Saml2ParameterNames;
-import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal;
-import org.springframework.security.saml2.provider.service.authentication.logout.Saml2LogoutRequest;
-import org.springframework.security.saml2.provider.service.authentication.logout.Saml2LogoutRequestValidator;
-import org.springframework.security.saml2.provider.service.authentication.logout.Saml2LogoutRequestValidatorParameters;
-import org.springframework.security.saml2.provider.service.authentication.logout.Saml2LogoutResponse;
-import org.springframework.security.saml2.provider.service.authentication.logout.Saml2LogoutValidatorResult;
-import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration;
-import org.springframework.security.saml2.provider.service.registration.Saml2MessageBinding;
-import org.springframework.security.saml2.provider.service.web.RelyingPartyRegistrationResolver;
-import org.springframework.security.web.DefaultRedirectStrategy;
-import org.springframework.security.web.RedirectStrategy;
-import org.springframework.security.web.authentication.logout.CompositeLogoutHandler;
-import org.springframework.security.web.authentication.logout.LogoutHandler;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
-import org.springframework.security.web.util.matcher.RequestMatcher;
-import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
-import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.util.HtmlUtils;
-import org.springframework.web.util.UriComponentsBuilder;
-
 /*
  * Copyright 2002-2023 the original author or authors.
  *
