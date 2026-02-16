@@ -449,3 +449,12 @@ class ProposalController {
     // ...
 }
 ```
+
+
+## Logging in logback-spring.xml
+
+```
+<logger name="org.grails.plugin.springsecurity.saml" level="debug" ref="STDOUT"></logger>
+<logger name="org.springframework.security.authentication" level="debug" ref="STDOUT"></logger>
+```
+
