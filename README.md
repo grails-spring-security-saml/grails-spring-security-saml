@@ -1,6 +1,6 @@
 ## SAML 2.0 Plugin for Grails 4, 5 and 6
 
-This plugin provides SAML 2.0 support for Grails 4, 5 and 6 applications. It was originally built from the Plugin that supported Grails 2 applications and was rewritten entirely for Grails 5. It enables SAML configuration directly from your application.yml or application.groovy without having to manually configure the Spring SAML Plugin and Grails Spring Security Plugin
+This plugin provides SAML 2.0 support for Grails 4, 5, 6 and 7 applications. It was originally built from the Plugin that supported Grails 2 applications and was rewritten entirely for Grails 5. It enables SAML configuration directly from your application.yml or application.groovy without having to manually configure the Spring SAML Plugin and Grails Spring Security Plugin
 
 ### Plugin Compatibility with Grails
 * Grails 3.0.x - Use Version 3.0.x of the plugin
@@ -9,15 +9,17 @@ This plugin provides SAML 2.0 support for Grails 4, 5 and 6 applications. It was
 * Grails 4.0.x - Use Version 4.0.2 of the plugin
 * Grails 5.1.x - Use Version 5.1.0 of the plugin
 * Grails 6.x.x - Use Version 6.0.11 of the plugin
+* Grails 7.x.x - Use Version 7.0.1 of the plugin
 
 ### Installation
+
 Grails 4:
 
 ```gradle
 compile 'org.grails.plugins:spring-security-saml:<version>'
 ```
 
-Grails 5 and 6:
+Grails 5, 6 and 7:
 
 ```gradle
 implementation 'io.github.grails-spring-security-saml:spring-security-saml:<version>'
@@ -35,7 +37,7 @@ repositories {
 }
 ```
 
-alternatively the following repositories for Grails 6
+alternatively the following repositories for Grails 6 and 7
 
 ```
 repositories {
@@ -50,6 +52,6 @@ plus
 implementation 'org.springframework.security:spring-security-saml2-service-provider:5.8.15'
 ```
 
-to prevent the downgrade of the spring-security-saml2-service-provider forced by the grails gradle plugins down to 5.7.x.
+for Grails 6 to prevent the downgrade of the spring-security-saml2-service-provider forced by the grails gradle plugins down to 5.7.x.
 
-See the [documentation page](https://jeffwils.github.io/grails-spring-security-saml/) and index.md (for Grails 5 and 6) and CHANGELOG.md for more information.
+See the [documentation page](https://jeffwils.github.io/grails-spring-security-saml/) and index.md (for Grails 5, 6 and 7) and CHANGELOG.md for more information.

@@ -11,7 +11,7 @@ grails:
                 userGroupAttribute: 'memberOf'
                 autoCreate:
                     active: false
-                    key: 'username'
+                    key: '__UNSET__'
                     assignAuthorities: true
                 metadata:
                     timeout: 5000

@@ -4,6 +4,7 @@ import grails.plugin.springsecurity.SecurityFilterPosition
 import grails.plugin.springsecurity.SpringSecurityUtils
 import grails.plugin.springsecurity.web.authentication.AjaxAwareAuthenticationFailureHandler
 import grails.plugins.Plugin
+import groovy.util.logging.Slf4j
 import org.cryptacular.util.CertUtil
 import org.cryptacular.util.KeyPairUtil
 import org.springframework.core.io.Resource
@@ -41,6 +42,7 @@ import java.security.cert.X509Certificate
 import java.security.interfaces.RSAPrivateKey
 import java.util.function.Predicate
 
+@Slf4j('logger')
 class SpringSecuritySamlGrailsPlugin extends Plugin {
 
     // the version or versions of Grails the plugin is designed for
@@ -115,6 +117,29 @@ class SpringSecuritySamlGrailsPlugin extends Plugin {
             providers.each { registrationId, metadataLocation ->
                 println "Registering registrationId ${registrationId} from ${metadataLocation}"
                 registrations << registrationFromMetadata(conf, registrationId, metadataLocation, keystore)
+            }
+
+            if (conf.saml.autoCreate.active) {
+                /*if (conf.saml.autoCreate.key == '__UNSET__') {
+                    throw new IllegalArgumentException("The configuration setting \"grails.plugin.springsecurity.saml.autoCreate.key\" " +
+                            "has been deprecated in favor of \"grails.plugin.springsecurity.userLookup.usernamePropertyName\" (which is older than this plugin). " +
+                            "To continue using this configuration setting, you must explictly opt into it rather than relying on the default value (formerly 'username'). " +
+                            "To skip this message, you must set \"grails.plugin.springsecurity.saml.autoCreate.key\" to an empty string, null or ~ to disable the deprecated functionality. " +
+                            "Opt-out can be confirmed by enabling debug logs for this plugin. ")
+                } else {
+                    logger.debug("Successfully opted out of \"grails.plugin.springsecurity.saml.autoCreate.key\"")
+                }*/
+
+                if (conf.saml.autoCreate.key instanceof String) {
+                    logger.debug("Configured to save users with \"grails.plugin.springsecurity.saml.autoCreate.key\"")
+                } else if (conf.saml.autoCreate.key instanceof Boolean && !conf.saml.autoCreate.key) {
+                    logger.debug("Configured to save users with \"grails.plugin.springsecurity.userLookup.usernamePropertyName\"")
+                } else {
+                    throw new IllegalArgumentException("The configuration setting \"grails.plugin.springsecurity.saml.autoCreate.key\" " +
+                        "has been deprecated in favor of \"grails.plugin.springsecurity.userLookup.usernamePropertyName\" (which is older than this plugin). " +
+                        "To  opt into it rather than relying on the default value (formerly 'username'). " +
+                        "To skip this message, you must set \"grails.plugin.springsecurity.saml.autoCreate.key\" to the boolean value false to disable the deprecated functionality. ")
+                }
             }
 
             // Retrieve UserDetails via SSO

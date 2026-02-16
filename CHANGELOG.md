@@ -2,6 +2,11 @@
 
 ### Installation
 
+## 7.0.1 - 16.02.26
+### Changed
+* Grails 7 support
+* Deprecated `grails.plugins.springsecurity.saml.autoCreate.key` (replaced by Grails Spring Security core configuration settings)
+
 ## 6.0.11 - 08.04.25
 ### Changed
 * Rewrote DefaultRegistrationResolver to use defaultIdp as fallback to the registrationId that is associated with the current login attempt

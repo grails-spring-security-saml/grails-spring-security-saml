@@ -1,6 +1,7 @@
 package org.grails.plugin.springsecurity.saml
 
 import grails.plugin.springsecurity.SpringSecurityService
+import grails.plugin.springsecurity.userdetails.GrailsUser
 import groovy.util.logging.Slf4j
 
 /**
@@ -26,14 +27,21 @@ class SamlSecurityService extends SpringSecurityService {
     }
 
     Object getCurrentUser() {
-        logger.debug("SamlSecurityService getCurrentUser")
-        def userDetails
+        logger.debug("SamlSecurityService.getCurrentUser")
         if (!isLoggedIn()) {
-            userDetails = null
-        } else {
-            userDetails = getAuthentication().details
-            if ( config?.saml.autoCreate.active ) {
-                userDetails =  getCurrentPersistedUser(userDetails)
+            return null
+        }
+        def userDetails = getAuthentication().details
+        if (config?.saml?.autoCreate?.active) {
+            if (conf.saml.autoCreate.key instanceof String) {
+                logger.debug("SamlSecurityService.getCurrentUser: lookup via autoCreate.key")
+                userDetails = getCurrentPersistedUser(userDetails)
+            } else if (conf.saml.autoCreate.key instanceof Boolean && !conf.saml.autoCreate.key) {
+                logger.debug("SamlSecurityService.getCurrentUser: lookup via Grails Spring Security Core")
+                userDetails = super.getCurrentUser()
+            } else {
+                throw new IllegalArgumentException("The configuration setting \"grails.plugin.springsecurity.saml.autoCreate.key\" " +
+                    "must be a string or false.")
             }
         }
         return userDetails

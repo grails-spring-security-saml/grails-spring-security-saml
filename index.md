@@ -1,5 +1,31 @@
 {% include_relative README.md %}
 
+### Changes in the Grails 7 version of the plugin
+
+The setting `grails.plugin.springsecurity.saml.autoCreate.key` has been deprecated and has been superseeded by the property
+`grails.plugin.springsecurity.userLookup.usernamePropertyName` which essentially fulfills the same purpose
+and increases compatibility with the original Spring Security Core plugin for Grails such as in situations
+where `grails.plugin.springsecurity.userLookup.usernameIgnoreCase` is set to true.
+
+However, this is just a deprecation and backwards compatibility has been retained for applications that still use the old property.
+
+Here is a suggestion how to quickly implement the change:
+
+```
+grails:
+    plugin:
+        springsecurity:
+            userLookup:
+                usernamePropertyName: '<what_you_wrote_in_autoCreate_key>'
+                # usernameIgnoreCase: true # optional case insensitivity
+         saml:
+            autoCreate:
+                active: true
+                key: false
+```
+
+Note that `usernameIgnoreCase` is only supported for GORM Hibernate but not GORM MongoDB due to case insensitivity requiring a special index on MongoDB.
+
 ### Changes in the Grails 6 version of the plugin
 
 The so called `spring-security-saml2-service-provider` has a glaring flaw.
@@ -8,8 +34,8 @@ Since SAML is a single sign on protocol, it is inherently cross site by design.
 The identity provider (IDP) and service provider (SP) do not have to be on the same origin.
 While this does not fundamentally break the plugin as it is still possible to initiate an SSO Login, 
 the spring service provider is unable to correlate the returning redirect to the originating session,
-which means that if you open a protected URL directly, e.g. through a bookmark, you be redirected into a newly created
-session on the index page. The quick and dirty solution is to set the JSESSIONID Cookie to `SameSite=None`,
+which means that if you open a protected URL directly, e.g. through a bookmark, you will be redirected into a newly created
+session on the index page. The quick and dirty solution is to set the JSESSIONID cookie to `SameSite=None`,
 undoing the SameSite protection, however, this will undo the CSRF protection that SameSite cookies grant.
 
 What do the developers in charge of Spring Security have to say? Well, let's say they don't want to make it easy.
@@ -19,7 +45,7 @@ I'm not certain how to address this without creating another cookie, making me t
 ```
 https://github.com/spring-projects/spring-security/issues/14013#issuecomment-1854823760
 
-Well, he started on the right track but arrived at exactly the wrong answer! We want the JSESSIONID token to be as secure as possible,
+Well, he started on the right track but arrived at exactly the wrong answer! We want the JSESSIONID cookie to be as secure as possible,
 hence `SameSite=Strict` or `SameStrict=Lax`. So what we want is another cookie or two, that are limited in scope
 so that they can only be used in the context of an SSO login and logout request.
 
@@ -84,7 +110,7 @@ The entityID of the Service Provider is generated based on the pattern specified
 The location specified in the AssertionConsumerService tag is now `{baseUrl}/login/saml2/sso/{registrationId}`.
 The location specified in the SingleLogoutService tag is now `{baseUrl}/logout/saml2/sso/{registrationId}`.
 
-Finally, the Service Provider needs to include the certificate specified by `grails.plugins.springsecurity.saml.saml.metadata.sp.defaults.signingKey`
+Finally, the Service Provider needs to include the certificate specified by `grails.plugins.springsecurity.saml.metadata.sp.defaults.signingKey`
 
 The generated metadata files are available under `/saml2/service-provider-metadata/{registrationId}`.
 
@@ -335,7 +361,9 @@ grails:
             userGroupAttribute = 'roles'
             autoCreate:
                 active: false # If you want the plugin to generate users in the DB as they are authenticated via SAML
-                key: 'id'
+                # key: 'id' # this is deprecated and you should explicitly unset it with the boolean value `false`
+                key: false  # this uses grails.plugin.springsecurity.userLookup.usernamePropertyName
+                            # and respects grails.plugin.springsecurity.userLookup.usernameIgnoreCase
                 assignAuthorities: false # If you want the plugin to assign the authorities that come from the SAML message.
             metadata:
                 defaultIdp: 'localhost:default:entityId'

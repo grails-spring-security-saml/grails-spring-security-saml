@@ -39,7 +39,7 @@ class SpringSamlUserDetailsService extends GormUserDetailsService {
     String authorityNameField
     Boolean samlAutoCreateActive
     Boolean samlAutoAssignAuthorities = true
-    String samlAutoCreateKey
+    Object samlAutoCreateKey
     Map samlUserAttributeMappings
     Map samlUserGroupToRoleMapping
     String samlUserGroupAttribute
@@ -50,39 +50,45 @@ class SpringSamlUserDetailsService extends GormUserDetailsService {
 
 
     public UserDetails loadUserBySAML(Saml2AuthenticatedPrincipal principal) throws UsernameNotFoundException {
-        logger.debug("Loading user - ${principal.toString()}")
-        if (principal) {
-            String username = getSamlUsername(principal)
-            logger.debug("Username ${username}")
-            if (!username) {
-                throw new UsernameNotFoundException("No username supplied in saml response.")
-            }
-
-            def user = generateSecurityUser(username)
-            logger.debug("Generated User ${user.username}")
-            user = mapAdditionalAttributes(principal, user)
-            if (user) {
-                def grantedAuthorities = getAuthoritiesForUser(principal, user)
-                if (samlAutoCreateActive) {
-                    user = saveUser(user.class, user, grantedAuthorities)
-                    // load any new local DB roles
-                    grantedAuthorities.addAll(
-                        determineLocalRoles(user)
-                    )
+        try {
+            logger.debug("Loading user - ${principal.toString()}")
+            if (principal) {
+                String username = getSamlUsername(principal)
+                logger.debug("Username ${username}")
+                if (!username) {
+                    throw new UsernameNotFoundException("No username supplied in saml response.")
                 }
 
-                logger.debug("User Class ${user?.class}")
-                logger.debug("User - username ${user?.username}")
-                logger.debug("User - id ${user?.id}")
-                def userDetails = createUserDetails(user, grantedAuthorities)
-                logger.debug("User Details ${userDetails.toString()}")
+                def user = generateSecurityUser(principal, username)
+                logger.debug("Generated User ${user.username}")
+                user = mapAdditionalAttributes(principal, user)
+                if (user) {
+                    def grantedAuthorities = getAuthoritiesForUser(principal, user)
+                    if (samlAutoCreateActive) {
+                        user = saveUser(user.class, user, grantedAuthorities)
+                        // load any new local DB roles
+                        grantedAuthorities.addAll(
+                            determineLocalRoles(user)
+                        )
+                    }
 
-                finalizeUserDetails(userDetails, user, principal)
+                    logger.debug("User Class ${user?.class}")
+                    logger.debug("User - username ${user?.username}")
+                    logger.debug("User - id ${user?.id}")
+                    def userDetails = createUserDetails(user, grantedAuthorities)
+                    logger.debug("User Details ${userDetails.toString()}")
 
-                return userDetails
-            } else {
-                throw new InstantiationException('could not instantiate new user')
+                    finalizeUserDetails(userDetails, user, principal)
+
+                    return userDetails
+                } else {
+                    throw new InstantiationException('could not instantiate new user')
+                }
             }
+        } catch (Exception e) {
+            // Provider Manager does not print the exception stack trace
+            logger.error("loadUserBySAML failed with Exception", e)
+            throw e;
         }
     }
 
@@ -163,30 +169,59 @@ class SpringSamlUserDetailsService extends GormUserDetailsService {
         authorities
     }
 
-
-    private Object generateSecurityUser(username) {
+    protected Object generateSecurityUser(Saml2AuthenticatedPrincipal principal, username) {
         userClass.newInstance( username: username, password: 'password' )
+    }
+
+    protected Object lookupSecurityUser(userClazz, user) {
+        // legacy logic
+        if (samlAutoCreateKey instanceof String) {
+            logger.debug("Looking up existing User - with saml.autoCreate.key")
+            Map whereClause = [:]
+            whereClause.put "$autoCreateKey".toString(), user."$autoCreateKey"
+            logger.debug("Before With Transaction")
+            def existingUser
+            userClazz.withTransaction {
+                existingUser = userClazz.findWhere(whereClause)
+            }
+            return existingUser
+        } else if (samlAutoCreateKey instanceof Boolean && !samlAutoCreateKey) {
+            // lookup logic that is the same as grails spring security core
+            logger.debug("Looking up existing User - with .userLookup.usernamePropertyName")
+            def securityConfig = SpringSecurityUtils.securityConfig
+            String usernamePropertyName = securityConfig.userLookup.usernamePropertyName
+
+            def existingUser
+            userClazz.withTransaction {
+                existingUser = userClazz.createCriteria().get {
+                    if (securityConfig.userLookup.usernameIgnoreCase) {
+                        eq(usernamePropertyName, user[usernamePropertyName], [ignoreCase: true])
+                    } else {
+                        eq(usernamePropertyName, user[usernamePropertyName])
+                    }
+                    cache true
+                }
+            }
+            return existingUser
+        } else {
+            throw new IllegalArgumentException("The configuration setting \"samlAutoCreateKey\" (or \"saml.autoCreate.key\") " +
+                "must be a string or false.")
+        }
     }
 
     private def saveUser(userClazz, user, authorities) {
         logger.debug("Saving User")
-        if (userClazz && samlAutoCreateActive && samlAutoCreateKey && authorityNameField && authorityJoinClassName) {
-
-            Map whereClause = [:]
-            whereClause.put "$samlAutoCreateKey".toString(), user."$samlAutoCreateKey"
+        if (userClazz && samlAutoCreateActive && authorityNameField && authorityJoinClassName) {
             Class<?> joinClass = grailsApplication.getDomainClass(authorityJoinClassName)?.clazz
             logger.debug("Before With Transaction")
 
                 logger.debug("Saving User")
-                def existingUser
-                userClazz.withTransaction {
-                    existingUser = userClazz.findWhere(whereClause)
-                }
+                def existingUser = lookupSecurityUser(userClazz, user)
 
                 if (!existingUser) {
                     logger.debug("User Doesn't Exist.....save it")
                     userClazz.withTransaction {
-                        user.save(flush:true)
+                        user.save(failOnError: true, flush: true)
                         //if (!user.save()) throw new UsernameNotFoundException("Could not save user ${user}");
                     }
 
@@ -199,12 +234,10 @@ class SpringSamlUserDetailsService extends GormUserDetailsService {
                         joinClass.withTransaction {
                             joinClass.removeAll user
                         }
-
-
                     }
                     logger.debug("Now Save the User")
                     userClazz.withTransaction {
-                        user.save()
+                        user.save(failOnError: true, flush: true)
                     }
 
                 }
@@ -234,8 +267,16 @@ class SpringSamlUserDetailsService extends GormUserDetailsService {
     }
 
     private Object updateUserProperties(existingUser, user) {
+        def securityConfig = SpringSecurityUtils.securityConfig
+        String usernamePropertyName = securityConfig.userLookup.usernamePropertyName
+        String usernameIgnoreCase = securityConfig.userLookup.usernameIgnoreCase
+
         samlUserAttributeMappings.each { key, value ->
-            existingUser."$key" = user."$key"
+            if (usernameIgnoreCase && key == usernamePropertyName) {
+                // do not update the username if it is case insensitive
+            } else {
+                existingUser."$key" = user."$key"
+            }
         }
         return existingUser
     }
