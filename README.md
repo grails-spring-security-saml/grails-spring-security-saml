@@ -1,4 +1,4 @@
-## SAML 2.0 Plugin for Grails 4, 5 and 6
+## SAML 2.0 Plugin for Grails 4, 5, 6 and 7
 
 This plugin provides SAML 2.0 support for Grails 4, 5, 6 and 7 applications. It was originally built from the Plugin that supported Grails 2 applications and was rewritten entirely for Grails 5. It enables SAML configuration directly from your application.yml or application.groovy without having to manually configure the Spring SAML Plugin and Grails Spring Security Plugin
 
@@ -46,7 +46,7 @@ repositories {
 }
 ```
 
-plus
+plus (only for Grails 6)
 
 ```
 implementation 'org.springframework.security:spring-security-saml2-service-provider:5.8.15'

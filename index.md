@@ -458,3 +458,25 @@ class ProposalController {
 <logger name="org.springframework.security.authentication" level="debug" ref="STDOUT"></logger>
 ```
 
+## Maven Central Publishing Guide
+
+https://docs.gradle.org/current/userguide/publishing_maven.html
+
+https://vanniktech.github.io/gradle-maven-publish-plugin/central/#configuring-maven-central
+
+The following gradle properties are mandatory (e.g. ~/.gradle/gradle.properties):
+
+```
+mavenCentralUsername=username
+mavenCentralPassword=the_password
+
+signing.keyId=12345678
+signing.password=some_password
+signing.secretKeyRingFile=/home/yourusername/.gnupg/secring.gpg
+```
+
+Then run
+
+```
+./gradlew publishToMavenCentral
+```

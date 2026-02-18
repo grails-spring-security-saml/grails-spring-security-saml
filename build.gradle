@@ -17,6 +17,10 @@ buildscript {
     }
 }
 
+plugins {
+    id "com.vanniktech.maven.publish" version "0.36.0"
+}
+
 apply plugin:"application"
 apply plugin:"com.jfrog.artifactory"
 apply plugin:"maven-publish"
@@ -130,48 +134,38 @@ tasks.withType(Sign) {
    onlyIf { isReleaseVersion }
 }
 
-java {
-    withSourcesJar()   // creates `sourcesJar` task
-    withJavadocJar()   // creates `javadocJar` task
-}
+mavenPublishing {
+    publishToMavenCentral()
+    signAllPublications()
 
-publishing {
-   publications {
-       maven(MavenPublication) {
-           groupId = project.group
-           artifactId = rootProject.name
-           version = project.version
-
-           from components.java
-
-           pom {
-               name = 'Grails Spring Security SAML2.0 Plugin for Grails'
-               description = 'The Plugin basically creates a bridge from your Grails application configuration ' + \
-                            'to both the Spring Security SAML service provider library and the Grails Spring Security Plugin. ' + \
-                            'Instead of having to map all of the beans in your application, the plugin wires the SAML service provider ' + \
-                            'beans based on your application configuration.'
-               url = 'https://github.com/grails-spring-security-saml/grails-spring-security-saml'
-               licenses {
-                   license {
-                       name = 'The Apache License, Version 2.0'
-                       url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
-                   }
-               }
-               developers {
-                   developer {
-                       id = 'valentingoebel'
-                       name = 'Valentin Göbel'
-                       email = 'valentin.goebel@tu-braunschweig.de'
-                   }
-               }
-               scm {
-                   connection = 'scm:git:git://github.com/grails-spring-security-saml/grails-spring-security-saml.git'
-                   developerConnection = 'scm:git:ssh://github.com:grails-spring-security-saml/grails-spring-security-saml.git'
-                   url = 'https://github.com/grails-spring-security-saml/grails-spring-security-saml/tree/main'
-               }
-           }
-       }
-   }
+    coordinates(project.group, rootProject.name, project.version)
+    pom {
+        name = 'Grails Spring Security SAML2.0 Plugin for Grails'
+        description = 'The Plugin basically creates a bridge from your Grails application configuration ' + \
+                        'to both the Spring Security SAML service provider library and the Grails Spring Security Plugin. ' + \
+                        'Instead of having to map all of the beans in your application, the plugin wires the SAML service provider ' + \
+                        'beans based on your application configuration.'
+        inceptionYear = "2020"
+        url = 'https://github.com/grails-spring-security-saml/grails-spring-security-saml'
+        licenses {
+            license {
+                name = 'The Apache License, Version 2.0'
+                url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+            }
+        }
+        developers {
+            developer {
+                id = 'valentingoebel'
+                name = 'Valentin Göbel'
+                email = 'valentin.goebel@tu-braunschweig.de'
+            }
+        }
+        scm {
+            connection = 'scm:git:git://github.com/grails-spring-security-saml/grails-spring-security-saml.git'
+            developerConnection = 'scm:git:ssh://github.com:grails-spring-security-saml/grails-spring-security-saml.git'
+            url = 'https://github.com/grails-spring-security-saml/grails-spring-security-saml/tree/main'
+        }
+    }
 }
 
 // https://grails.org/blog/2021-04-07-publish-grails-plugin-to-maven-central.html
